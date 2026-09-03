@@ -19,10 +19,11 @@ export type GitScopeProps = {
   commits: Commit[];
   authors: Author[];
   errors: RepoLoadError[];
+  rangePresets: number[];
 };
 
-export function GitScope({ repoConfigs, commits, authors, errors }: GitScopeProps) {
-  const gs = useGitScope({ repoConfigs, commits });
+export function GitScope({ repoConfigs, commits, authors, errors, rangePresets }: GitScopeProps) {
+  const gs = useGitScope({ repoConfigs, commits, defaultRangePreset: String(rangePresets[0] ?? 30) });
   const repoById = useMemo(() => Object.fromEntries(repoConfigs.map((r) => [r.id, r])), [repoConfigs]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +77,7 @@ export function GitScope({ repoConfigs, commits, authors, errors }: GitScopeProp
         <ToolBar
           scope={gs.scope}
           onScopeChange={gs.setScope}
+          rangePresets={rangePresets}
           preset={gs.preset}
           onPresetChange={gs.setPreset}
           from={gs.globalRange.from}

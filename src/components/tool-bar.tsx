@@ -2,18 +2,15 @@
 
 import type { Author, ScopeMode, SortMode } from "@/lib/gitscope/types";
 
-const PRESETS: { p: string; label: string }[] = [
-  { p: "7", label: "7D" },
-  { p: "30", label: "30D" },
-  { p: "90", label: "90D" },
-  { p: "365", label: "1Y" },
-  { p: "all", label: "All" },
-  { p: "custom", label: "Custom…" },
-];
+/** e.g. 7 -> "7D", 365 -> "1Y", 730 -> "2Y" */
+function labelForDays(days: number): string {
+  return days % 365 === 0 ? `${days / 365}Y` : `${days}D`;
+}
 
 type ToolBarProps = {
   scope: ScopeMode;
   onScopeChange: (scope: ScopeMode) => void;
+  rangePresets: number[];
   preset: string;
   onPresetChange: (preset: string) => void;
   from: string | null;
@@ -33,6 +30,7 @@ type ToolBarProps = {
 export function ToolBar({
   scope,
   onScopeChange,
+  rangePresets,
   preset,
   onPresetChange,
   from,
@@ -62,17 +60,28 @@ export function ToolBar({
       <div className="vr" />
       <span className="tlabel">Range</span>
       <div className="chips">
-        {PRESETS.map((item) => (
+        {rangePresets.map((days) => (
           <button
-            key={item.p}
+            key={days}
             type="button"
             className="chip"
-            aria-pressed={preset === item.p}
-            onClick={() => onPresetChange(item.p)}
+            aria-pressed={preset === String(days)}
+            onClick={() => onPresetChange(String(days))}
           >
-            {item.label}
+            {labelForDays(days)}
           </button>
         ))}
+        <button type="button" className="chip" aria-pressed={preset === "all"} onClick={() => onPresetChange("all")}>
+          All
+        </button>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={preset === "custom"}
+          onClick={() => onPresetChange("custom")}
+        >
+          Custom…
+        </button>
       </div>
       <input
         className="dtin"

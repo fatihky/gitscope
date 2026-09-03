@@ -28,6 +28,19 @@ export function getConfiguredRepoPaths(): string[] {
     .filter(Boolean);
 }
 
+const DEFAULT_RANGE_PRESETS = [7, 30, 90, 365];
+
+/** Date-range preset chips (in days), configured via the GITSCOPE_RANGE_PRESETS env var (comma-separated). */
+export function getConfiguredRangePresets(): number[] {
+  const raw = process.env.GITSCOPE_RANGE_PRESETS;
+  if (!raw) return DEFAULT_RANGE_PRESETS;
+  const days = raw
+    .split(",")
+    .map((d) => Number(d.trim()))
+    .filter((d) => Number.isInteger(d) && d > 0);
+  return days.length > 0 ? days : DEFAULT_RANGE_PRESETS;
+}
+
 export async function loadGitScopeData(): Promise<GitScopeData> {
   const repoConfigs: RepoConfig[] = [];
   const commits: Commit[] = [];

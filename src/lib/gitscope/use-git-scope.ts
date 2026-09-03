@@ -29,13 +29,14 @@ const toMs = (d: string | null, end?: boolean): number | null =>
 export type GitScopeInput = {
   repoConfigs: RepoConfig[];
   commits: Commit[];
+  defaultRangePreset?: string;
 };
 
-export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
+export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }: GitScopeInput) {
   const [now] = useState(() => Date.now());
   const [repos, setRepos] = useState<Record<string, RepoRuntime>>(() => initialRepoRuntime(repoConfigs));
   const [scope, setScope] = useState<ScopeMode>("global");
-  const [preset, setPreset] = useState("30");
+  const [preset, setPreset] = useState(defaultRangePreset);
   const [customFrom, setCustomFrom] = useState<string | null>(null);
   const [customTo, setCustomTo] = useState<string | null>(null);
   const [q, setQInternal] = useState("");
@@ -62,11 +63,12 @@ export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
     (p: string) => {
       setPreset(p);
       if (p === "custom" && !customFrom) {
-        setCustomFrom(iso(now - 30 * DAY));
+        const seedDays = Number(defaultRangePreset) || 30;
+        setCustomFrom(iso(now - seedDays * DAY));
         setCustomTo(iso(now));
       }
     },
-    [customFrom, now],
+    [customFrom, now, defaultRangePreset],
   );
 
   const repoRange = useCallback(
