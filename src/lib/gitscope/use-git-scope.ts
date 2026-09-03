@@ -8,7 +8,7 @@ function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRunti
     out[r.id] = {
       open: index === 0,
       on: true,
-      bon: new Set(r.branches.slice(0, 2)),
+      bon: new Set(r.branches),
       range: null,
     };
   });
@@ -91,7 +91,11 @@ export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
     (id: string) =>
       updateRepo(id, (r) => {
         const on = !r.on;
-        const bon = on && r.bon.size === 0 ? new Set(repoConfigs.find((c) => c.id === id)?.branches) : r.bon;
+        const bon = on
+          ? r.bon.size === 0
+            ? new Set(repoConfigs.find((c) => c.id === id)?.branches)
+            : r.bon
+          : new Set<string>();
         return { ...r, on, bon };
       }),
     [updateRepo, repoConfigs],
@@ -102,7 +106,7 @@ export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
       updateRepo(id, (r) => {
         const bon = new Set(r.bon);
         bon.has(branch) ? bon.delete(branch) : bon.add(branch);
-        return { ...r, bon, on: bon.size ? true : r.on };
+        return { ...r, bon, on: bon.size > 0 };
       }),
     [updateRepo],
   );
