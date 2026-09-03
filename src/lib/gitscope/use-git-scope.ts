@@ -1,34 +1,39 @@
 import { useCallback, useMemo, useState } from "react";
 import { DAY, iso } from "./format";
-import { COMMITS, NOW, REPO_CONFIGS } from "./mock-data";
-import type { Commit, DateRange, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
+import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
 
-function initialRepoRuntime(): Record<string, RepoRuntime> {
+function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRuntime> {
   const out: Record<string, RepoRuntime> = {};
-  for (const r of REPO_CONFIGS) {
+  repoConfigs.forEach((r, index) => {
     out[r.id] = {
-      open: r.id === "core-api",
+      open: index === 0,
       on: true,
       bon: new Set(r.branches.slice(0, 2)),
       range: null,
     };
-  }
+  });
   return out;
 }
 
-function presetRange(preset: string, custom: DateRange): DateRange {
+function presetRange(preset: string, custom: DateRange, now: number): DateRange {
   if (preset === "all") return { from: null, to: null };
   if (preset === "custom") return custom;
-  const to = NOW;
-  const from = NOW - Number(preset) * DAY;
+  const to = now;
+  const from = now - Number(preset) * DAY;
   return { from: iso(from), to: iso(to) };
 }
 
 const toMs = (d: string | null, end?: boolean): number | null =>
   d ? new Date(d + (end ? "T23:59:59" : "T00:00:00")).getTime() : null;
 
-export function useGitScope() {
-  const [repos, setRepos] = useState<Record<string, RepoRuntime>>(initialRepoRuntime);
+export type GitScopeInput = {
+  repoConfigs: RepoConfig[];
+  commits: Commit[];
+};
+
+export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
+  const [now] = useState(() => Date.now());
+  const [repos, setRepos] = useState<Record<string, RepoRuntime>>(() => initialRepoRuntime(repoConfigs));
   const [scope, setScope] = useState<ScopeMode>("global");
   const [preset, setPreset] = useState("30");
   const [customFrom, setCustomFrom] = useState<string | null>(null);
@@ -44,8 +49,8 @@ export function useGitScope() {
   const [tab, setTab] = useState<TabKey>("commits");
 
   const globalRange = useMemo<DateRange>(
-    () => presetRange(preset, { from: customFrom, to: customTo }),
-    [preset, customFrom, customTo],
+    () => presetRange(preset, { from: customFrom, to: customTo }, now),
+    [preset, customFrom, customTo, now],
   );
 
   const setQ = useCallback((value: string) => {
@@ -57,11 +62,11 @@ export function useGitScope() {
     (p: string) => {
       setPreset(p);
       if (p === "custom" && !customFrom) {
-        setCustomFrom(iso(NOW - 30 * DAY));
-        setCustomTo(iso(NOW));
+        setCustomFrom(iso(now - 30 * DAY));
+        setCustomTo(iso(now));
       }
     },
-    [customFrom],
+    [customFrom, now],
   );
 
   const repoRange = useCallback(
@@ -86,10 +91,10 @@ export function useGitScope() {
     (id: string) =>
       updateRepo(id, (r) => {
         const on = !r.on;
-        const bon = on && r.bon.size === 0 ? new Set(REPO_CONFIGS.find((c) => c.id === id)?.branches) : r.bon;
+        const bon = on && r.bon.size === 0 ? new Set(repoConfigs.find((c) => c.id === id)?.branches) : r.bon;
         return { ...r, on, bon };
       }),
-    [updateRepo],
+    [updateRepo, repoConfigs],
   );
 
   const toggleBranch = useCallback(
@@ -113,29 +118,29 @@ export function useGitScope() {
   const selectAllRepos = useCallback(() => {
     setRepos((prev) => {
       const next: Record<string, RepoRuntime> = {};
-      for (const r of REPO_CONFIGS) next[r.id] = { ...prev[r.id], on: true, bon: new Set(r.branches) };
+      for (const r of repoConfigs) next[r.id] = { ...prev[r.id], on: true, bon: new Set(r.branches) };
       return next;
     });
-  }, []);
+  }, [repoConfigs]);
 
   const selectNoneRepos = useCallback(() => {
     setRepos((prev) => {
       const next: Record<string, RepoRuntime> = {};
-      for (const r of REPO_CONFIGS) next[r.id] = { ...prev[r.id], on: false };
+      for (const r of repoConfigs) next[r.id] = { ...prev[r.id], on: false };
       return next;
     });
-  }, []);
+  }, [repoConfigs]);
 
   const list = useMemo<Commit[]>(() => {
     const query = q.trim().toLowerCase();
     const out: Commit[] = [];
-    for (const r of REPO_CONFIGS) {
+    for (const r of repoConfigs) {
       const runtime = repos[r.id];
       if (!runtime.on || !runtime.bon.size) continue;
       const rr = repoRange(r.id);
       const lo = toMs(rr.from);
       const hi = toMs(rr.to, true);
-      for (const c of COMMITS) {
+      for (const c of commits) {
         if (c.repo !== r.id || !runtime.bon.has(c.branch)) continue;
         if (lo && c.ts < lo) continue;
         if (hi && c.ts > hi) continue;
@@ -162,7 +167,7 @@ export function useGitScope() {
           : (a, b) => b.ts - a.ts,
     );
     return out;
-  }, [repos, repoRange, merges, author, q, sort]);
+  }, [repoConfigs, commits, repos, repoRange, merges, author, q, sort]);
 
   const showMore = useCallback(() => setLimit((l) => l + 250), []);
   const selectCommit = useCallback((i: number) => {
@@ -170,7 +175,7 @@ export function useGitScope() {
     setShowDetail(true);
   }, []);
 
-  const selectedCommit = useMemo(() => (sel == null ? undefined : COMMITS.find((c) => c.i === sel)), [sel]);
+  const selectedCommit = useMemo(() => (sel == null ? undefined : commits.find((c) => c.i === sel)), [sel, commits]);
 
   const overrideCount = useMemo(
     () => (scope === "repo" ? Object.values(repos).filter((r) => r.range).length : 0),
@@ -207,6 +212,8 @@ export function useGitScope() {
     tab,
     setTab,
 
+    repoConfigs,
+    commits,
     repos,
     repoRange,
     toggleRepoOpen,

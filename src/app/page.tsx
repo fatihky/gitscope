@@ -1,9 +1,10 @@
-"use client";
+import { GitScopeClient } from "@/components/git-scope-client";
+import { loadGitScopeData } from "@/lib/gitscope/git-source";
 
-import dynamic from "next/dynamic";
+// Repository data reflects live local filesystem state, not static content — read it per request.
+export const dynamic = "force-dynamic";
 
-const GitScope = dynamic(() => import("@/components/git-scope"), { ssr: false });
-
-export default function Home() {
-  return <GitScope />;
+export default async function Home() {
+  const data = await loadGitScopeData();
+  return <GitScopeClient {...data} />;
 }

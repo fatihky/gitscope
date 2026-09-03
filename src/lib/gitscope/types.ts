@@ -11,9 +11,11 @@ export type RepoConfig = {
   lang: string;
   path: string;
   branches: string[];
-  dirs: string[];
-  ext: string;
-  w: number;
+};
+
+export type RepoLoadError = {
+  path: string;
+  message: string;
 };
 
 export type DateRange = {

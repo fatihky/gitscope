@@ -1,18 +1,18 @@
 "use client";
 
 import { ago, fmt, full } from "@/lib/gitscope/format";
-import { REPO_BY_ID } from "@/lib/gitscope/mock-data";
-import type { Commit } from "@/lib/gitscope/types";
+import type { Commit, RepoConfig } from "@/lib/gitscope/types";
 
 type CommitsTableProps = {
   list: Commit[];
   limit: number;
   sel: number | null;
+  repoById: Record<string, RepoConfig>;
   onSelect: (i: number) => void;
   onShowMore: () => void;
 };
 
-export function CommitsTable({ list, limit, sel, onSelect, onShowMore }: CommitsTableProps) {
+export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore }: CommitsTableProps) {
   if (!list.length) {
     return (
       <div className="tbl">
@@ -38,7 +38,7 @@ export function CommitsTable({ list, limit, sel, onSelect, onShowMore }: Commits
           const total = c.add + c.del;
           const blocks = Math.max(1, Math.round((total / max) * 5));
           const ab = Math.max(1, Math.round((c.add / total) * blocks));
-          const repo = REPO_BY_ID[c.repo];
+          const repo = repoById[c.repo];
           return (
             <div key={c.i} className={`gr trow ${sel === c.i ? "sel" : ""}`} onClick={() => onSelect(c.i)}>
               <div className="graph">

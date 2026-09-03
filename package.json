@@ -10,6 +10,8 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "diff": "^7.0.0",
+    "isomorphic-git": "^1.41.9",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
     "@tailwindcss/postcss": "^4",
+    "@types/diff": "^7.0.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -1,7 +1,6 @@
 "use client";
 
-import { AUTHORS } from "@/lib/gitscope/mock-data";
-import type { ScopeMode, SortMode } from "@/lib/gitscope/types";
+import type { Author, ScopeMode, SortMode } from "@/lib/gitscope/types";
 
 const PRESETS: { p: string; label: string }[] = [
   { p: "7", label: "7D" },
@@ -24,6 +23,7 @@ type ToolBarProps = {
   onToChange: (value: string) => void;
   author: string;
   onAuthorChange: (value: string) => void;
+  authors: Author[];
   merges: boolean;
   onMergesChange: (value: boolean) => void;
   sort: SortMode;
@@ -42,6 +42,7 @@ export function ToolBar({
   onToChange,
   author,
   onAuthorChange,
+  authors,
   merges,
   onMergesChange,
   sort,
@@ -92,7 +93,7 @@ export function ToolBar({
       <span className="tlabel">Author</span>
       <select className="sel" value={author} onChange={(e) => onAuthorChange(e.target.value)}>
         <option value="">All authors</option>
-        {AUTHORS.map((a) => (
+        {authors.map((a) => (
           <option key={a.email} value={a.email}>
             {a.name}
           </option>

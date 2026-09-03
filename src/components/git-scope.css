@@ -30,6 +30,10 @@
 
 /* ============ shell ============ */
 .app{display:flex;flex-direction:column;height:100vh}
+.setup-banner{
+  flex:0 0 auto;padding:8px 14px;font-size:11px;color:var(--amb);
+  background:var(--panel-2);border-bottom:1px solid var(--bd);
+}
 .topbar{
   height:36px;flex:0 0 36px;display:flex;align-items:center;gap:10px;padding:0 10px;
   background:var(--panel);border-bottom:1px solid var(--bd);

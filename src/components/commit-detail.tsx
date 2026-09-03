@@ -3,15 +3,15 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { full } from "@/lib/gitscope/format";
-import { REPO_BY_ID } from "@/lib/gitscope/mock-data";
-import type { Commit } from "@/lib/gitscope/types";
+import type { Commit, RepoConfig } from "@/lib/gitscope/types";
 
 type CommitDetailProps = {
   commit: Commit | undefined;
+  repoById: Record<string, RepoConfig>;
   onClose: () => void;
 };
 
-export function CommitDetail({ commit, onClose }: CommitDetailProps) {
+export function CommitDetail({ commit, repoById, onClose }: CommitDetailProps) {
   return (
     <aside className="detail">
       <div className="pane-hd">
@@ -24,7 +24,7 @@ export function CommitDetail({ commit, onClose }: CommitDetailProps) {
       </div>
       <div className="dbody">
         {commit ? (
-          <CommitDetailBody commit={commit} />
+          <CommitDetailBody commit={commit} repo={repoById[commit.repo]} />
         ) : (
           <div className="hint">Select a commit to inspect metadata, message and changed files.</div>
         )}
@@ -36,8 +36,7 @@ export function CommitDetail({ commit, onClose }: CommitDetailProps) {
 const SECTIONS = ["commit", "authorship", "message", "files"] as const;
 type SectionKey = (typeof SECTIONS)[number];
 
-function CommitDetailBody({ commit: c }: { commit: Commit }) {
-  const repo = REPO_BY_ID[c.repo];
+function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfig }) {
   const signOff = `Signed-off-by: ${c.a.name} <${c.a.email}>`;
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     commit: true,

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { fmt } from "@/lib/gitscope/format";
-import { BRANCH_COMMIT_COUNTS, REPO_CONFIGS } from "@/lib/gitscope/mock-data";
-import type { DateRange, RepoConfig, RepoRuntime } from "@/lib/gitscope/types";
+import type { Commit, DateRange, RepoConfig, RepoRuntime } from "@/lib/gitscope/types";
 
 type RepoSidebarProps = {
+  repoConfigs: RepoConfig[];
+  commits: Commit[];
   repos: Record<string, RepoRuntime>;
   repoRange: (id: string) => DateRange;
   onToggleOpen: (id: string) => void;
@@ -18,6 +19,8 @@ type RepoSidebarProps = {
 };
 
 export function RepoSidebar({
+  repoConfigs,
+  commits,
   repos,
   repoRange,
   onToggleOpen,
@@ -28,14 +31,22 @@ export function RepoSidebar({
   onSelectAll,
   onSelectNone,
 }: RepoSidebarProps) {
-  const onCount = REPO_CONFIGS.filter((r) => repos[r.id].on).length;
+  const onCount = repoConfigs.filter((r) => repos[r.id].on).length;
+  const branchCommitCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const c of commits) {
+      const key = `${c.repo}/${c.branch}`;
+      out[key] = (out[key] || 0) + 1;
+    }
+    return out;
+  }, [commits]);
 
   return (
     <aside className="side">
       <div className="side-hd">
         <span>Repositories</span>
         <span className="cnt">
-          {onCount}/{REPO_CONFIGS.length}
+          {onCount}/{repoConfigs.length}
         </span>
         <div className="sp" />
         <button type="button" className="lnk" onClick={onSelectAll}>
@@ -46,12 +57,13 @@ export function RepoSidebar({
         </button>
       </div>
       <div className="tree">
-        {REPO_CONFIGS.map((r) => (
+        {repoConfigs.map((r) => (
           <RepoNode
             key={r.id}
             repo={r}
             runtime={repos[r.id]}
             range={repoRange(r.id)}
+            branchCommitCounts={branchCommitCounts}
             onToggleOpen={() => onToggleOpen(r.id)}
             onToggleOn={() => onToggleOn(r.id)}
             onToggleBranch={(b) => onToggleBranch(r.id, b)}
@@ -73,6 +85,7 @@ type RepoNodeProps = {
   repo: RepoConfig;
   runtime: RepoRuntime;
   range: DateRange;
+  branchCommitCounts: Record<string, number>;
   onToggleOpen: () => void;
   onToggleOn: () => void;
   onToggleBranch: (branch: string) => void;
@@ -84,6 +97,7 @@ function RepoNode({
   repo,
   runtime,
   range,
+  branchCommitCounts,
   onToggleOpen,
   onToggleOn,
   onToggleBranch,
@@ -93,7 +107,7 @@ function RepoNode({
   const [editing, setEditing] = useState(false);
   const [draftFrom, setDraftFrom] = useState(range.from || "");
   const [draftTo, setDraftTo] = useState(range.to || "");
-  const total = repo.branches.reduce((s, b) => s + (BRANCH_COMMIT_COUNTS[`${repo.id}/${b}`] || 0), 0);
+  const total = repo.branches.reduce((s, b) => s + (branchCommitCounts[`${repo.id}/${b}`] || 0), 0);
   const some = runtime.bon.size > 0 && runtime.bon.size < repo.branches.length;
   const custom = !!runtime.range;
 
@@ -127,7 +141,7 @@ function RepoNode({
             />
             <span className="bname">{b}</span>
             {b === repo.branches[0] && <span className="tag">def</span>}
-            <span className="cnt">{fmt(BRANCH_COMMIT_COUNTS[`${repo.id}/${b}`] || 0)}</span>
+            <span className="cnt">{fmt(branchCommitCounts[`${repo.id}/${b}`] || 0)}</span>
           </div>
         ))}
       </div>
