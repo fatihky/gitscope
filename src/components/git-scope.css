@@ -117,6 +117,9 @@ kbd{
 .side-hd .lnk,.pane-hd .lnk{text-transform:none;letter-spacing:0;font-weight:500;font-size:11px;
   color:var(--acc);background:none;border:0;cursor:pointer;padding:0}
 .side-hd .lnk:hover{text-decoration:underline}
+.pane-hd .closebtn{background:none;border:0;cursor:pointer;padding:0;margin-left:6px;
+  color:var(--tx-3);font-size:12px;line-height:1;display:grid;place-items:center}
+.pane-hd .closebtn:hover{color:var(--tx)}
 .tree{flex:1;overflow-y:auto;padding:3px 0}
 .repo{border-bottom:1px solid color-mix(in srgb,var(--bd) 55%,transparent)}
 .rrow,.brow{display:flex;align-items:center;gap:6px;padding:0 8px;cursor:pointer;height:26px}
@@ -255,7 +258,12 @@ kbd{
 .gitscope.nodetail .detail{display:none}
 .dbody{flex:1;overflow-y:auto}
 .dsec{padding:8px 10px;border-bottom:1px solid var(--bd)}
-.dsub{color:var(--tx-3);font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:5px}
+.dsub{color:var(--tx-3);font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:5px;
+  cursor:pointer;user-select:none}
+.dsec .tw{transition:transform .12s;display:inline-block}
+.dsec .tw.open{transform:rotate(90deg)}
+.sec-body{display:none}
+.dsec.open .sec-body{display:block}
 .kv{display:grid;grid-template-columns:66px 1fr;gap:3px 8px}
 .kv .k{color:var(--tx-3)}
 .kv .v{overflow-wrap:anywhere}

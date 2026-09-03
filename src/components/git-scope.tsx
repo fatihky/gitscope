@@ -99,7 +99,7 @@ export function GitScope() {
               <ActivityPanel list={gs.list} />
             </section>
           </main>
-          <CommitDetail commit={gs.selectedCommit} />
+          <CommitDetail commit={gs.selectedCommit} onClose={() => gs.setShowDetail(false)} />
         </div>
         <StatusBar
           totalCount={gs.list.length}

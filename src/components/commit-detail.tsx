@@ -1,20 +1,26 @@
 "use client";
 
+import { useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { full } from "@/lib/gitscope/format";
 import { REPO_BY_ID } from "@/lib/gitscope/mock-data";
 import type { Commit } from "@/lib/gitscope/types";
 
 type CommitDetailProps = {
   commit: Commit | undefined;
+  onClose: () => void;
 };
 
-export function CommitDetail({ commit }: CommitDetailProps) {
+export function CommitDetail({ commit, onClose }: CommitDetailProps) {
   return (
     <aside className="detail">
       <div className="pane-hd">
         <span>Commit detail</span>
         <div className="sp" />
         <span className="cnt">j / k</span>
+        <button type="button" className="closebtn" onClick={onClose} title="Close commit detail panel">
+          ✕
+        </button>
       </div>
       <div className="dbody">
         {commit ? (
@@ -27,9 +33,19 @@ export function CommitDetail({ commit }: CommitDetailProps) {
   );
 }
 
+const SECTIONS = ["commit", "authorship", "message", "files"] as const;
+type SectionKey = (typeof SECTIONS)[number];
+
 function CommitDetailBody({ commit: c }: { commit: Commit }) {
   const repo = REPO_BY_ID[c.repo];
   const signOff = `Signed-off-by: ${c.a.name} <${c.a.email}>`;
+  const [open, setOpen] = useState<Record<SectionKey, boolean>>({
+    commit: true,
+    authorship: true,
+    message: true,
+    files: true,
+  });
+  const toggle = (key: SectionKey) => setOpen((o) => ({ ...o, [key]: !o[key] }));
 
   return (
     <>
@@ -44,8 +60,7 @@ function CommitDetailBody({ commit: c }: { commit: Commit }) {
           ⤓ Checkout
         </button>
       </div>
-      <div className="dsec">
-        <div className="dsub">Commit</div>
+      <DetailSection title="Commit" open={open.commit} onToggle={() => toggle("commit")}>
         <div className="kv">
           <span className="k">SHA</span>
           <span className="v mono hash">{c.hash}</span>
@@ -65,9 +80,8 @@ function CommitDetailBody({ commit: c }: { commit: Commit }) {
           <span className="k">Type</span>
           <span className="v">{c.merge ? "merge commit (2 parents)" : "regular commit"}</span>
         </div>
-      </div>
-      <div className="dsec">
-        <div className="dsub">Authorship</div>
+      </DetailSection>
+      <DetailSection title="Authorship" open={open.authorship} onToggle={() => toggle("authorship")}>
         <div className="kv">
           <span className="k">Author</span>
           <span className="v">
@@ -81,22 +95,30 @@ function CommitDetailBody({ commit: c }: { commit: Commit }) {
           <span className="k">Committed</span>
           <span className="v mono">{full(c.ts + 60000)}</span>
         </div>
-      </div>
-      <div className="dsec">
-        <div className="dsub">Message</div>
+      </DetailSection>
+      <DetailSection title="Message" open={open.message} onToggle={() => toggle("message")}>
         <div className="cmsg">
           <span className="h1">{c.subject}</span>
           {!c.merge && `Refs #${3000 + (c.i % 900)}\n\n`}
           {signOff}
         </div>
-      </div>
-      <div className="dsec" style={{ padding: "8px 0" }}>
-        <div className="dsub" style={{ padding: "0 10px" }}>
-          Changed files <span className="cnt">{c.files}</span>
-          <span style={{ float: "right" }}>
-            <span className="add">+{c.add}</span> <span className="del">−{c.del}</span>
-          </span>
-        </div>
+      </DetailSection>
+      <DetailSection
+        title="Changed files"
+        open={open.files}
+        onToggle={() => toggle("files")}
+        style={{ padding: "8px 0" }}
+        headerStyle={{ padding: "0 10px" }}
+        headerExtra={
+          <>
+            {" "}
+            <span className="cnt">{c.files}</span>
+            <span style={{ float: "right" }}>
+              <span className="add">+{c.add}</span> <span className="del">−{c.del}</span>
+            </span>
+          </>
+        }
+      >
         <div className="files">
           {c.paths.map((p, k) => {
             const st = k % 9 === 0 ? "A" : k % 13 === 0 ? "D" : "M";
@@ -116,7 +138,29 @@ function CommitDetailBody({ commit: c }: { commit: Commit }) {
           })}
           {c.files > c.paths.length && <div className="hint">+ {c.files - c.paths.length} more files…</div>}
         </div>
-      </div>
+      </DetailSection>
     </>
+  );
+}
+
+type DetailSectionProps = {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  headerExtra?: ReactNode;
+  style?: CSSProperties;
+  headerStyle?: CSSProperties;
+  children: ReactNode;
+};
+
+function DetailSection({ title, open, onToggle, headerExtra, style, headerStyle, children }: DetailSectionProps) {
+  return (
+    <div className={`dsec ${open ? "open" : ""}`} style={style}>
+      <div className="dsub" style={headerStyle} onClick={onToggle}>
+        <span className={`tw ${open ? "open" : ""}`}>▶</span> {title}
+        {headerExtra}
+      </div>
+      <div className="sec-body">{children}</div>
+    </div>
   );
 }

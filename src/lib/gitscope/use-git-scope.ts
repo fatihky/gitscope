@@ -165,7 +165,10 @@ export function useGitScope() {
   }, [repos, repoRange, merges, author, q, sort]);
 
   const showMore = useCallback(() => setLimit((l) => l + 250), []);
-  const selectCommit = useCallback((i: number) => setSel(i), []);
+  const selectCommit = useCallback((i: number) => {
+    setSel(i);
+    setShowDetail(true);
+  }, []);
 
   const selectedCommit = useMemo(() => (sel == null ? undefined : COMMITS.find((c) => c.i === sel)), [sel]);
 
