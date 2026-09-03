@@ -1,0 +1,105 @@
+"use client";
+
+import { ago, fmt, full } from "@/lib/gitscope/format";
+import { REPO_BY_ID } from "@/lib/gitscope/mock-data";
+import type { Commit } from "@/lib/gitscope/types";
+
+type CommitsTableProps = {
+  list: Commit[];
+  limit: number;
+  sel: number | null;
+  onSelect: (i: number) => void;
+  onShowMore: () => void;
+};
+
+export function CommitsTable({ list, limit, sel, onSelect, onShowMore }: CommitsTableProps) {
+  if (!list.length) {
+    return (
+      <div className="tbl">
+        <TableHead />
+        <div className="empty">
+          No commits match the current filters.
+          <br />
+          <span style={{ fontSize: 11 }}>Widen the date range or enable more branches.</span>
+        </div>
+      </div>
+    );
+  }
+
+  const visible = list.slice(0, limit);
+  const max = Math.max(...visible.map((c) => c.add + c.del), 1);
+  const remaining = list.length - limit;
+
+  return (
+    <div className="tbl">
+      <TableHead />
+      <div>
+        {visible.map((c) => {
+          const total = c.add + c.del;
+          const blocks = Math.max(1, Math.round((total / max) * 5));
+          const ab = Math.max(1, Math.round((c.add / total) * blocks));
+          const repo = REPO_BY_ID[c.repo];
+          return (
+            <div key={c.i} className={`gr trow ${sel === c.i ? "sel" : ""}`} onClick={() => onSelect(c.i)}>
+              <div className="graph">
+                <span className={`dot ${c.merge ? "merge" : ""}`} style={{ background: c.a.color }} />
+              </div>
+              <div className="mono hash">{c.hash.slice(0, 7)}</div>
+              <div className="subj">
+                <span className="rchip">
+                  <i className="lang" style={{ background: repo.lang, width: 6, height: 6, borderRadius: "50%" }} />
+                  {c.repo}
+                </span>
+                <span className="bchip">⑂ {c.branch}</span>
+                {c.tag && <span className="vchip">⌾ {c.tag}</span>}
+                <span className="t">{c.subject}</span>
+              </div>
+              <div className="num">{c.files}</div>
+              <div className="diffcell">
+                <span className="add">+{c.add}</span>
+                <span className="del">−{c.del}</span>
+                <span className="dbar">
+                  {Array.from({ length: 5 }, (_, k) => (
+                    <i key={`${c.i}-${k}`} className={k < blocks ? (k < ab ? "a" : "d") : ""} />
+                  ))}
+                </span>
+              </div>
+              <div className="who">
+                <span className="av" style={{ background: c.a.color }}>
+                  {c.a.ini}
+                </span>
+                <span className="t" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {c.a.name}
+                </span>
+              </div>
+              <div className="mono ago" title={full(c.ts)}>
+                {ago(c.ts)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {remaining > 0 && (
+        <div className="more">
+          <button type="button" onClick={onShowMore}>
+            Show {Math.min(250, remaining)} more of {fmt(remaining)} remaining
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableHead() {
+  return (
+    <div className="gr thead">
+      <div />
+      <div>Commit</div>
+      <div>Message</div>
+      <div className="num">Files</div>
+      <div>Changes</div>
+      <div>Author</div>
+      <div className="ago">Date</div>
+    </div>
+  );
+}
