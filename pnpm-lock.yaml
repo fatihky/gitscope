@@ -17,6 +17,9 @@ importers:
       next:
         specifier: 16.3.4
         version: 16.3.4(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      nuqs:
+        specifier: ^2.10.1
+        version: 2.10.1(next@16.3.4(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -362,6 +365,9 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@standard-schema/spec@1.1.0':
+    resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
@@ -757,6 +763,27 @@ packages:
       sass:
         optional: true
 
+  nuqs@2.10.1:
+    resolution: {integrity: sha512-7lPZrPJVOsD0VvfQSKtodYBBPGPLsLzkFU8ueYIap9yMMJvSw6UC12p8luA5NW7aKe7AbPHKxcxb3OluH6iAJA==}
+    peerDependencies:
+      '@remix-run/react': '>=2'
+      '@tanstack/react-router': ^1
+      next: '>=14.2.0'
+      react: '>=18.2.0 || ^19.0.0-0'
+      react-router: ^5 || ^6 || ^7 || ^8
+      react-router-dom: ^5 || ^6 || ^7
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@tanstack/react-router':
+        optional: true
+      next:
+        optional: true
+      react-router:
+        optional: true
+      react-router-dom:
+        optional: true
+
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
@@ -1091,6 +1118,8 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@16.3.4':
     optional: true
+
+  '@standard-schema/spec@1.1.0': {}
 
   '@swc/helpers@0.5.23':
     dependencies:
@@ -1430,6 +1459,13 @@ snapshots:
       - '@babel/core'
       - '@types/node'
       - babel-plugin-macros
+
+  nuqs@2.10.1(next@16.3.4(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      react: 19.2.8
+    optionalDependencies:
+      next: 16.3.4(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
   once@1.4.0:
     dependencies:

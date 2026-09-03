@@ -1,3 +1,4 @@
+import { parseAsString, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
 import { DAY, iso } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
@@ -36,9 +37,9 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const [now] = useState(() => Date.now());
   const [repos, setRepos] = useState<Record<string, RepoRuntime>>(() => initialRepoRuntime(repoConfigs));
   const [scope, setScope] = useState<ScopeMode>("global");
-  const [preset, setPreset] = useState(defaultRangePreset);
-  const [customFrom, setCustomFrom] = useState<string | null>(null);
-  const [customTo, setCustomTo] = useState<string | null>(null);
+  const [preset, setPreset] = useQueryState("preset", parseAsString.withDefault(defaultRangePreset));
+  const [customFrom, setCustomFrom] = useQueryState("from", parseAsString);
+  const [customTo, setCustomTo] = useQueryState("to", parseAsString);
   const [q, setQInternal] = useState("");
   const [author, setAuthor] = useState("");
   const [merges, setMerges] = useState(true);
