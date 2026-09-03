@@ -172,7 +172,7 @@ kbd{
 
 /* ---- commit table ---- */
 .tbl{min-width:900px}
-.gr{display:grid;grid-template-columns:20px 68px minmax(240px,1fr) 44px 158px 74px;align-items:center}
+.gr{display:grid;grid-template-columns:20px 68px minmax(240px,1fr) 158px 74px;align-items:center}
 .thead{
   position:sticky;top:0;z-index:2;background:var(--panel-2);border-bottom:1px solid var(--bd);
   height:24px;color:var(--tx-3);font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700
@@ -195,7 +195,6 @@ kbd{
 }
 .bchip{font-family:ui-monospace,monospace;font-weight:500}
 .vchip{color:var(--pur);border-color:color-mix(in srgb,var(--pur) 45%,var(--bd));background:color-mix(in srgb,var(--pur) 10%,transparent)}
-.num{text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--tx-2)}
 .add{color:var(--grn);font-family:ui-monospace,monospace;font-size:10.5px}
 .del{color:var(--red);font-family:ui-monospace,monospace;font-size:10.5px}
 .who{display:flex;align-items:center;gap:6px;min-width:0}

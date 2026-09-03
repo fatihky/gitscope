@@ -108,7 +108,6 @@ export function ToolBar({
       <select className="sel" value={sort} onChange={(e) => onSortChange(e.target.value as SortMode)}>
         <option value="new">Newest first</option>
         <option value="old">Oldest first</option>
-        <option value="size">Largest change</option>
       </select>
     </div>
   );

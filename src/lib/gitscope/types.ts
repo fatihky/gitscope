@@ -45,6 +45,6 @@ export type Commit = {
 };
 
 export type ScopeMode = "global" | "repo";
-export type SortMode = "new" | "old" | "size";
+export type SortMode = "new" | "old";
 export type TabKey = "commits" | "contrib" | "activity";
 export type Theme = "dark" | "light";

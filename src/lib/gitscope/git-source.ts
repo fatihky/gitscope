@@ -108,28 +108,22 @@ async function loadRepo(
   console.log(`[gitscope]   ${tagByOid.size} tag(s)`);
 
   // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that reaches it.
+  // includeChanges is left false: diffing every commit against its parent just to list it is unnecessary
+  // work, so buildCommit falls back to an empty changes list here; per-commit diffs are done on demand.
   const claimed = new Set<string>();
-  const pending: { oid: string; branch: string }[] = [];
+  const pending: { entry: LogEntry; branch: string }[] = [];
   for (const branch of branches) {
-    const log = await git.log({ ...gitArgs, ref: branch });
+    const log = await git.log({ ...gitArgs, ref: branch, includeChanges: false });
     for (const entry of log) {
       if (claimed.has(entry.oid)) continue;
       claimed.add(entry.oid);
-      pending.push({ oid: entry.oid, branch });
+      pending.push({ entry, branch });
     }
   }
-  console.log(`[gitscope]   ${pending.length} commit(s) to process...`);
+  console.log(`[gitscope]   ${pending.length} commit(s) found`);
 
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
-  const repoCommits: Commit[] = [];
-  for (const { oid, branch } of pending) {
-    // depth: 1 from a commit oid re-walks just that commit, with `changes` diffed against its first parent.
-    const [entry] = await git.log({ ...gitArgs, ref: oid, depth: 1, includeChanges: true });
-    repoCommits.push(buildCommit(id, branch, entry, tagByOid, authorsByKey));
-    if (repoCommits.length % 50 === 0) {
-      console.log(`[gitscope]   ...${repoCommits.length}/${pending.length} commits processed`);
-    }
-  }
+  const repoCommits = pending.map(({ entry, branch }) => buildCommit(id, branch, entry, tagByOid, authorsByKey));
 
   return {
     repo: { id, name: id, lang: colorForRepo(id), path: repoPath, branches },
@@ -170,8 +164,8 @@ function getOrCreateAuthor(map: Map<string, Author>, name: string, email: string
   return a;
 }
 
-// Building the commit list only needs metadata + the changed-file list (both cheap, from tree comparison).
-// Line-level add/del counts require reading full blob content and diffing it, so that analysis is done
+// Building the commit list only needs metadata; entry.commit.changes is absent (includeChanges: false above),
+// so files/paths default to empty here. Both the changed-file list and line-level add/del counts are computed
 // on demand for a single commit at a time — see getCommitDiff in commit-diff.ts.
 function buildCommit(
   repoId: string,

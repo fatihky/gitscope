@@ -50,7 +50,6 @@ export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore 
                 {c.tag && <span className="vchip">⌾ {c.tag}</span>}
                 <span className="t">{c.subject}</span>
               </div>
-              <div className="num">{c.files}</div>
               <div className="who">
                 <span className="av" style={{ background: c.a.color }}>
                   {c.a.ini}
@@ -83,7 +82,6 @@ function TableHead() {
       <div />
       <div>Commit</div>
       <div>Message</div>
-      <div className="num">Files</div>
       <div>Author</div>
       <div className="ago">Date</div>
     </div>

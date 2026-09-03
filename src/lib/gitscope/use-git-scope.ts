@@ -159,13 +159,7 @@ export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
         out.push(c);
       }
     }
-    out.sort(
-      sort === "old"
-        ? (a, b) => a.ts - b.ts
-        : sort === "size"
-          ? (a, b) => b.files - a.files
-          : (a, b) => b.ts - a.ts,
-    );
+    out.sort(sort === "old" ? (a, b) => a.ts - b.ts : (a, b) => b.ts - a.ts);
     return out;
   }, [repoConfigs, commits, repos, repoRange, merges, author, q, sort]);
 
