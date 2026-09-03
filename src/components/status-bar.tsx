@@ -10,15 +10,30 @@ type StatusBarProps = {
   selectedRepoCount: number;
   selectedBranchCount: number;
   author: string;
+  commitsLoading: boolean;
 };
 
-export function StatusBar({ totalCount, limit, scope, selectedRepoCount, selectedBranchCount, author }: StatusBarProps) {
+export function StatusBar({
+  totalCount,
+  limit,
+  scope,
+  selectedRepoCount,
+  selectedBranchCount,
+  author,
+  commitsLoading,
+}: StatusBarProps) {
   return (
     <footer className="status">
       <span className="live">●</span>
       <span>
         <b>{fmt(totalCount)}</b> commits · showing <b>{fmt(Math.min(limit, totalCount))}</b>
       </span>
+      {commitsLoading && (
+        <>
+          <span className="dotsep" />
+          <span className="loading">loading commits…</span>
+        </>
+      )}
       <span className="dotsep" />
       <span>
         scope <b>{scope === "global" ? "global range" : "per repository"}</b>

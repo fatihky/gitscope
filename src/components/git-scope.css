@@ -201,8 +201,7 @@ kbd{
 .av{width:15px;height:15px;border-radius:3px;flex:0 0 15px;display:grid;place-items:center;
   font-size:8px;font-weight:800;color:#08111d}
 .ago{color:var(--tx-3);text-align:right}
-.more{display:flex;justify-content:center;padding:10px}
-.more button{height:24px;padding:0 12px;background:var(--panel);border:1px solid var(--bd);border-radius:4px;cursor:pointer;color:var(--tx-2)}
+.more{display:flex;justify-content:center;padding:10px;color:var(--tx-3);font-size:11px}
 .empty{padding:40px;text-align:center;color:var(--tx-3)}
 
 /* ---- stats ---- */
@@ -294,3 +293,5 @@ kbd{
 .status b{color:var(--tx-2);font-weight:600;font-variant-numeric:tabular-nums}
 .dotsep{width:3px;height:3px;border-radius:50%;background:var(--bd-2)}
 .live{color:var(--grn)}
+.loading{color:var(--amb);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}

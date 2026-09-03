@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { loadCommits } from "@/lib/gitscope/load-commits";
 import { useGitScope } from "@/lib/gitscope/use-git-scope";
+import type { GitScopeState } from "@/lib/gitscope/use-git-scope";
 import type { Author, Commit, RepoConfig, RepoLoadError } from "@/lib/gitscope/types";
 import { ActivityPanel } from "./activity-panel";
 import { CommitDetail } from "./commit-detail";
@@ -16,16 +18,78 @@ import { ViewTabs } from "./view-tabs";
 
 export type GitScopeProps = {
   repoConfigs: RepoConfig[];
-  commits: Commit[];
-  authors: Author[];
   errors: RepoLoadError[];
   rangePresets: number[];
 };
 
-export function GitScope({ repoConfigs, commits, authors, errors, rangePresets }: GitScopeProps) {
+/**
+ * The earliest date the current filters need commits for, across whatever's actually enabled
+ * ("all" / an unbounded custom range, or a repo-scoped override, means null: everything). Used to
+ * decide whether the commits already fetched from the server cover what the UI is now asking for.
+ */
+function earliestNeededFrom(gs: Pick<GitScopeState, "scope" | "globalRange" | "repos" | "repoRange">): string | null {
+  if (gs.scope !== "repo") return gs.globalRange.from;
+  let earliest: string | null = null;
+  for (const [repoId, runtime] of Object.entries(gs.repos)) {
+    if (!runtime.on) continue;
+    const from = gs.repoRange(repoId).from;
+    if (from === null) return null;
+    if (earliest === null || from < earliest) earliest = from;
+  }
+  return earliest;
+}
+
+/** Does `needed` reach further back than what's already loaded? `null` means "everything so far". */
+function needsWiderLoad(loadedFrom: string | null | undefined, needed: string | null): boolean {
+  if (loadedFrom === undefined) return true;
+  if (loadedFrom === null) return false;
+  return needed === null || needed < loadedFrom;
+}
+
+export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
+  const [commits, setCommits] = useState<Commit[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [commitsLoading, setCommitsLoading] = useState(repoConfigs.length > 0);
+  const [commitsError, setCommitsError] = useState<string | null>(null);
+  // The `since` bound of the commits currently loaded; undefined until the first load, null once
+  // full history has been fetched. A ref because updating it must never itself trigger a re-fetch.
+  const loadedFromRef = useRef<string | null | undefined>(undefined);
+
   const gs = useGitScope({ repoConfigs, commits, defaultRangePreset: String(rangePresets[0] ?? 30) });
   const repoById = useMemo(() => Object.fromEntries(repoConfigs.map((r) => [r.id, r])), [repoConfigs]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Transmits the filters to the server: the initial load fetches only what the default view
+  // needs, and re-fetches (once, widening to full history) if the user then asks for dates further
+  // back than what's loaded — e.g. switching the range preset to "All". Never shrinks a fetch back
+  // down; narrowing the visible range after that is filtered client-side over what's loaded, same
+  // as before this split.
+  const neededFrom = earliestNeededFrom(gs);
+  useEffect(() => {
+    if (repoConfigs.length === 0 || !needsWiderLoad(loadedFromRef.current, neededFrom)) return;
+    let cancelled = false;
+    setCommitsLoading(true);
+    const selections = repoConfigs.map((r) => ({ id: r.id, path: r.path, branches: r.branches }));
+
+    loadCommits(selections, neededFrom)
+      .then((data) => {
+        if (cancelled) return;
+        loadedFromRef.current = neededFrom;
+        setCommits(data.commits);
+        setAuthors(data.authors);
+        setCommitsError(null);
+      })
+      .catch((err) => {
+        if (!cancelled) setCommitsError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setCommitsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [repoConfigs, neededFrom]);
 
   useEffect(() => {
     function handleKeydown(e: KeyboardEvent) {
@@ -67,6 +131,7 @@ export function GitScope({ repoConfigs, commits, authors, errors, rangePresets }
             Some repositories failed to load: {errors.map((e) => `${e.path} (${e.message})`).join("; ")}
           </div>
         )}
+        {commitsError && <div className="setup-banner">Failed to load commits: {commitsError}</div>}
         <TopBar
           query={gs.q}
           onQueryChange={gs.setQ}
@@ -120,6 +185,7 @@ export function GitScope({ repoConfigs, commits, authors, errors, rangePresets }
                 list={gs.list}
                 limit={gs.limit}
                 sel={gs.sel}
+                loading={commitsLoading}
                 repoById={repoById}
                 onSelect={gs.selectCommit}
                 onShowMore={gs.showMore}
@@ -141,6 +207,7 @@ export function GitScope({ repoConfigs, commits, authors, errors, rangePresets }
           selectedRepoCount={gs.selectedRepoCount}
           selectedBranchCount={gs.selectedBranchCount}
           author={gs.author}
+          commitsLoading={commitsLoading}
         />
       </div>
     </div>

@@ -11,12 +11,13 @@ const MAX_DIFF_BYTES = 2 * 1024 * 1024;
 export type GitArgs = { fs: typeof fs; dir?: string; gitdir?: string };
 type LogEntry = Awaited<ReturnType<typeof git.log>>[number];
 
-export type GitScopeData = {
+export type RepoConfigsData = {
   repoConfigs: RepoConfig[];
-  commits: Commit[];
-  authors: Author[];
   errors: RepoLoadError[];
 };
+
+/** A repo + the branches to walk, as chosen by the UI (order matters — see loadCommitsForRepos). */
+export type RepoCommitSelection = { id: string; path: string; branches: string[] };
 
 /** Repository paths configured via the GITSCOPE_REPOS env var (comma-separated). */
 export function getConfiguredRepoPaths(): string[] {
@@ -41,11 +42,10 @@ export function getConfiguredRangePresets(): number[] {
   return days.length > 0 ? days : DEFAULT_RANGE_PRESETS;
 }
 
-export async function loadGitScopeData(): Promise<GitScopeData> {
+/** Fast initial load: repo names + branch lists only, no commit walking. */
+export async function loadRepoConfigs(): Promise<RepoConfigsData> {
   const repoConfigs: RepoConfig[] = [];
-  const commits: Commit[] = [];
   const errors: RepoLoadError[] = [];
-  const authorsByKey = new Map<string, Author>();
   const usedIds = new Set<string>();
 
   const repoPaths = getConfiguredRepoPaths();
@@ -54,17 +54,52 @@ export async function loadGitScopeData(): Promise<GitScopeData> {
 
   for (const rawPath of repoPaths) {
     const repoPath = path.resolve(process.cwd(), rawPath);
-    const repoStart = Date.now();
-    console.log(`[gitscope] loading repo: ${repoPath}`);
     try {
-      const { repo, repoCommits } = await loadRepo(repoPath, usedIds, authorsByKey);
+      const repo = await loadRepoConfig(repoPath, usedIds);
       repoConfigs.push(repo);
-      commits.push(...repoCommits);
-      console.log(`[gitscope] loaded repo ${repo.id}: ${repoCommits.length} commits in ${Date.now() - repoStart}ms`);
+      console.log(`[gitscope] loaded repo config ${repo.id}: ${repo.branches.length} branch(es)`);
     } catch (err) {
-      console.log(`[gitscope] failed to load repo ${repoPath} after ${Date.now() - repoStart}ms`, err);
+      console.log(`[gitscope] failed to load repo ${repoPath}`, err);
       errors.push({ path: repoPath, message: err instanceof Error ? err.message : String(err) });
     }
+  }
+
+  console.log(`[gitscope] repo configs done in ${Date.now() - start}ms`);
+
+  return { repoConfigs, errors };
+}
+
+/**
+ * Commit load, run after the initial page load once the UI knows which repos/branches/date range
+ * it wants. `since` limits how far back each branch is walked (isomorphic-git's log() has no
+ * matching `until`, so an upper bound on the range still has to be applied client-side).
+ */
+export async function loadCommitsForRepos(
+  selections: RepoCommitSelection[],
+  since: Date | null,
+): Promise<{ commits: Commit[]; authors: Author[] }> {
+  const commits: Commit[] = [];
+  const authorsByKey = new Map<string, Author>();
+  const start = Date.now();
+
+  for (const { id, path: repoPath, branches } of selections) {
+    const repoStart = Date.now();
+    const gitArgs = resolveGitArgs(repoPath);
+    const tagByOid = await loadTags(gitArgs);
+
+    // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that reaches it.
+    const claimed = new Set<string>();
+    let count = 0;
+    for (const branch of branches) {
+      const log = await git.log({ ...gitArgs, ref: branch, includeChanges: false, since: since ?? undefined });
+      for (const entry of log) {
+        if (claimed.has(entry.oid)) continue;
+        claimed.add(entry.oid);
+        commits.push(buildCommit(id, branch, entry, tagByOid, authorsByKey));
+        count++;
+      }
+    }
+    console.log(`[gitscope] loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`);
   }
 
   commits.sort((a, b) => b.ts - a.ts);
@@ -72,13 +107,11 @@ export async function loadGitScopeData(): Promise<GitScopeData> {
     c.i = i;
   });
 
-  console.log(`[gitscope] done in ${Date.now() - start}ms (${commits.length} commits total)`);
+  console.log(`[gitscope] commit load done in ${Date.now() - start}ms (${commits.length} commits total)`);
 
   return {
-    repoConfigs,
     commits,
     authors: Array.from(authorsByKey.values()).sort((a, b) => a.name.localeCompare(b.name)),
-    errors,
   };
 }
 
@@ -99,11 +132,7 @@ function uniqueId(base: string, usedIds: Set<string>): string {
   return id;
 }
 
-async function loadRepo(
-  repoPath: string,
-  usedIds: Set<string>,
-  authorsByKey: Map<string, Author>,
-): Promise<{ repo: RepoConfig; repoCommits: Commit[] }> {
+async function loadRepoConfig(repoPath: string, usedIds: Set<string>): Promise<RepoConfig> {
   const gitArgs = resolveGitArgs(repoPath);
 
   const branchNames = await git.listBranches(gitArgs);
@@ -117,31 +146,8 @@ async function loadRepo(
   const branches = [defaultBranch, ...branchNames.filter((b) => b !== defaultBranch).sort()];
   console.log(`[gitscope]   ${branches.length} branch(es): ${branches.join(", ")}`);
 
-  const tagByOid = await loadTags(gitArgs);
-  console.log(`[gitscope]   ${tagByOid.size} tag(s)`);
-
-  // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that reaches it.
-  // includeChanges is left false: diffing every commit against its parent just to list it is unnecessary
-  // work, so buildCommit falls back to an empty changes list here; per-commit diffs are done on demand.
-  const claimed = new Set<string>();
-  const pending: { entry: LogEntry; branch: string }[] = [];
-  for (const branch of branches) {
-    const log = await git.log({ ...gitArgs, ref: branch, includeChanges: false });
-    for (const entry of log) {
-      if (claimed.has(entry.oid)) continue;
-      claimed.add(entry.oid);
-      pending.push({ entry, branch });
-    }
-  }
-  console.log(`[gitscope]   ${pending.length} commit(s) found`);
-
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
-  const repoCommits = pending.map(({ entry, branch }) => buildCommit(id, branch, entry, tagByOid, authorsByKey));
-
-  return {
-    repo: { id, name: id, lang: colorForRepo(id), path: repoPath, branches },
-    repoCommits,
-  };
+  return { id, name: id, lang: colorForRepo(id), path: repoPath, branches };
 }
 
 async function loadTags(gitArgs: GitArgs): Promise<Map<string, string>> {

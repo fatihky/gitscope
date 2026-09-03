@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { ago, fmt, full } from "@/lib/gitscope/format";
 import type { Commit, RepoConfig } from "@/lib/gitscope/types";
 
@@ -7,27 +8,53 @@ type CommitsTableProps = {
   list: Commit[];
   limit: number;
   sel: number | null;
+  loading?: boolean;
   repoById: Record<string, RepoConfig>;
   onSelect: (i: number) => void;
   onShowMore: () => void;
 };
 
-export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore }: CommitsTableProps) {
+export function CommitsTable({ list, limit, sel, loading, repoById, onSelect, onShowMore }: CommitsTableProps) {
+  const remaining = list.length - limit;
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Grow the rendered window as the sentinel below the last row scrolls into view, instead of
+  // requiring a click — `onShowMore` only widens the client-side render window (all matching
+  // commits are already in `list`), so this is free.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || remaining <= 0) return;
+    const root = el.closest(".view");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onShowMore();
+      },
+      { root: root instanceof Element ? root : null, rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [remaining, onShowMore]);
+
   if (!list.length) {
     return (
       <div className="tbl">
         <TableHead />
         <div className="empty">
-          No commits match the current filters.
-          <br />
-          <span style={{ fontSize: 11 }}>Widen the date range or enable more branches.</span>
+          {loading ? (
+            "Loading commits…"
+          ) : (
+            <>
+              No commits match the current filters.
+              <br />
+              <span style={{ fontSize: 11 }}>Widen the date range or enable more branches.</span>
+            </>
+          )}
         </div>
       </div>
     );
   }
 
   const visible = list.slice(0, limit);
-  const remaining = list.length - limit;
 
   return (
     <div className="tbl">
@@ -66,10 +93,8 @@ export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore 
         })}
       </div>
       {remaining > 0 && (
-        <div className="more">
-          <button type="button" onClick={onShowMore}>
-            Show {Math.min(250, remaining)} more of {fmt(remaining)} remaining
-          </button>
+        <div className="more" ref={sentinelRef}>
+          {fmt(remaining)} more commit{remaining === 1 ? "" : "s"} — scroll to load
         </div>
       )}
     </div>
