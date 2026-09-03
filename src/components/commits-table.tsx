@@ -27,7 +27,6 @@ export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore 
   }
 
   const visible = list.slice(0, limit);
-  const max = Math.max(...visible.map((c) => c.add + c.del), 1);
   const remaining = list.length - limit;
 
   return (
@@ -35,9 +34,6 @@ export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore 
       <TableHead />
       <div>
         {visible.map((c) => {
-          const total = c.add + c.del;
-          const blocks = Math.max(1, Math.round((total / max) * 5));
-          const ab = Math.max(1, Math.round((c.add / total) * blocks));
           const repo = repoById[c.repo];
           return (
             <div key={c.i} className={`gr trow ${sel === c.i ? "sel" : ""}`} onClick={() => onSelect(c.i)}>
@@ -55,15 +51,6 @@ export function CommitsTable({ list, limit, sel, repoById, onSelect, onShowMore 
                 <span className="t">{c.subject}</span>
               </div>
               <div className="num">{c.files}</div>
-              <div className="diffcell">
-                <span className="add">+{c.add}</span>
-                <span className="del">−{c.del}</span>
-                <span className="dbar">
-                  {Array.from({ length: 5 }, (_, k) => (
-                    <i key={`${c.i}-${k}`} className={k < blocks ? (k < ab ? "a" : "d") : ""} />
-                  ))}
-                </span>
-              </div>
               <div className="who">
                 <span className="av" style={{ background: c.a.color }}>
                   {c.a.ini}
@@ -97,7 +84,6 @@ function TableHead() {
       <div>Commit</div>
       <div>Message</div>
       <div className="num">Files</div>
-      <div>Changes</div>
       <div>Author</div>
       <div className="ago">Date</div>
     </div>

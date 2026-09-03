@@ -40,8 +40,6 @@ export type Commit = {
   merge: boolean;
   subject: string;
   files: number;
-  add: number;
-  del: number;
   tag: string | null;
   paths: string[];
 };

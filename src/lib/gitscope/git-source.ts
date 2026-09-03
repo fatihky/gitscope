@@ -8,7 +8,7 @@ import type { Author, Commit, RepoConfig, RepoLoadError } from "./types";
 /** Skip line-diffing blobs larger than this (still counted as a changed file). */
 const MAX_DIFF_BYTES = 2 * 1024 * 1024;
 
-type GitArgs = { fs: typeof fs; dir?: string; gitdir?: string };
+export type GitArgs = { fs: typeof fs; dir?: string; gitdir?: string };
 type LogEntry = Awaited<ReturnType<typeof git.log>>[number];
 
 export type GitScopeData = {
@@ -70,7 +70,7 @@ export async function loadGitScopeData(): Promise<GitScopeData> {
 }
 
 /** Node's `fs` module works as isomorphic-git's fs client directly; only the dir-vs-gitdir shape differs for bare repos. */
-function resolveGitArgs(repoPath: string): GitArgs {
+export function resolveGitArgs(repoPath: string): GitArgs {
   if (fs.existsSync(path.join(repoPath, ".git"))) return { fs, dir: repoPath };
   if (fs.existsSync(path.join(repoPath, "HEAD")) && fs.existsSync(path.join(repoPath, "objects"))) {
     return { fs, gitdir: repoPath };
@@ -118,16 +118,16 @@ async function loadRepo(
       pending.push({ oid: entry.oid, branch });
     }
   }
-  console.log(`[gitscope]   ${pending.length} commit(s) to process, diffing...`);
+  console.log(`[gitscope]   ${pending.length} commit(s) to process...`);
 
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
   const repoCommits: Commit[] = [];
   for (const { oid, branch } of pending) {
     // depth: 1 from a commit oid re-walks just that commit, with `changes` diffed against its first parent.
     const [entry] = await git.log({ ...gitArgs, ref: oid, depth: 1, includeChanges: true });
-    repoCommits.push(await buildCommit(gitArgs, id, branch, entry, tagByOid, authorsByKey));
+    repoCommits.push(buildCommit(id, branch, entry, tagByOid, authorsByKey));
     if (repoCommits.length % 50 === 0) {
-      console.log(`[gitscope]   ...${repoCommits.length}/${pending.length} commits diffed`);
+      console.log(`[gitscope]   ...${repoCommits.length}/${pending.length} commits processed`);
     }
   }
 
@@ -170,17 +170,18 @@ function getOrCreateAuthor(map: Map<string, Author>, name: string, email: string
   return a;
 }
 
-async function buildCommit(
-  gitArgs: GitArgs,
+// Building the commit list only needs metadata + the changed-file list (both cheap, from tree comparison).
+// Line-level add/del counts require reading full blob content and diffing it, so that analysis is done
+// on demand for a single commit at a time — see getCommitDiff in commit-diff.ts.
+function buildCommit(
   repoId: string,
   branch: string,
   entry: LogEntry,
   tagByOid: Map<string, string>,
   authorsByKey: Map<string, Author>,
-): Promise<Commit> {
+): Commit {
   const { commit, oid } = entry;
   const changes = (commit.changes ?? []) as [string | null, string | null, string][];
-  const stats = await Promise.all(changes.map(([newOid, oldOid]) => diffStats(gitArgs, newOid, oldOid)));
 
   return {
     i: 0, // reassigned once the full, sorted commit list is known
@@ -192,14 +193,12 @@ async function buildCommit(
     merge: commit.parent.length > 1,
     subject: commit.message.split("\n")[0],
     files: changes.length,
-    add: stats.reduce((s, x) => s + x.add, 0),
-    del: stats.reduce((s, x) => s + x.del, 0),
     tag: tagByOid.get(oid) ?? null,
     paths: changes.map(([, , filepath]) => filepath),
   };
 }
 
-async function diffStats(gitArgs: GitArgs, newOid: string | null, oldOid: string | null) {
+export async function diffStats(gitArgs: GitArgs, newOid: string | null, oldOid: string | null) {
   const [oldText, newText] = await Promise.all([blobText(gitArgs, oldOid), blobText(gitArgs, newOid)]);
   if (oldText === null || newText === null) return { add: 0, del: 0 };
   let add = 0;

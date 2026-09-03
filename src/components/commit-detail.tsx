@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { getCommitDiff } from "@/lib/gitscope/commit-diff";
+import type { CommitDiff } from "@/lib/gitscope/commit-diff";
 import { full } from "@/lib/gitscope/format";
 import type { Commit, RepoConfig } from "@/lib/gitscope/types";
 
@@ -45,6 +47,18 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
     files: true,
   });
   const toggle = (key: SectionKey) => setOpen((o) => ({ ...o, [key]: !o[key] }));
+
+  const [diff, setDiff] = useState<CommitDiff | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setDiff(null);
+    getCommitDiff(repo.path, c.hash).then((d) => {
+      if (!cancelled) setDiff(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [repo.path, c.hash]);
 
   return (
     <>
@@ -112,30 +126,30 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
           <>
             {" "}
             <span className="cnt">{c.files}</span>
-            <span style={{ float: "right" }}>
-              <span className="add">+{c.add}</span> <span className="del">−{c.del}</span>
-            </span>
+            {diff && (
+              <span style={{ float: "right" }}>
+                <span className="add">+{diff.add}</span> <span className="del">−{diff.del}</span>
+              </span>
+            )}
           </>
         }
       >
         <div className="files">
-          {c.paths.map((p, k) => {
-            const st = k % 9 === 0 ? "A" : k % 13 === 0 ? "D" : "M";
-            const a = st === "D" ? 0 : Math.ceil((c.add / c.paths.length) * (1 + (k % 3) / 2));
-            const d = st === "A" ? 0 : Math.ceil((c.del / c.paths.length) * (1 + (k % 2) / 2));
-            return (
-              <div className="f" key={`${p}-${k}`}>
-                <span className={`st ${st}`}>{st}</span>
-                <span className="p" title={p}>
-                  {p}
+          {diff ? (
+            diff.changes.map((f) => (
+              <div className="f" key={f.path}>
+                <span className={`st ${f.status}`}>{f.status}</span>
+                <span className="p" title={f.path}>
+                  {f.path}
                 </span>
                 <span className="mono">
-                  <span className="add">+{a}</span> <span className="del">−{d}</span>
+                  <span className="add">+{f.add}</span> <span className="del">−{f.del}</span>
                 </span>
               </div>
-            );
-          })}
-          {c.files > c.paths.length && <div className="hint">+ {c.files - c.paths.length} more files…</div>}
+            ))
+          ) : (
+            <div className="hint">Loading diff…</div>
+          )}
         </div>
       </DetailSection>
     </>

@@ -172,7 +172,7 @@ kbd{
 
 /* ---- commit table ---- */
 .tbl{min-width:900px}
-.gr{display:grid;grid-template-columns:20px 68px minmax(240px,1fr) 44px 118px 158px 74px;align-items:center}
+.gr{display:grid;grid-template-columns:20px 68px minmax(240px,1fr) 44px 158px 74px;align-items:center}
 .thead{
   position:sticky;top:0;z-index:2;background:var(--panel-2);border-bottom:1px solid var(--bd);
   height:24px;color:var(--tx-3);font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:700
@@ -196,12 +196,8 @@ kbd{
 .bchip{font-family:ui-monospace,monospace;font-weight:500}
 .vchip{color:var(--pur);border-color:color-mix(in srgb,var(--pur) 45%,var(--bd));background:color-mix(in srgb,var(--pur) 10%,transparent)}
 .num{text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:var(--tx-2)}
-.diffcell{display:flex;align-items:center;gap:5px}
 .add{color:var(--grn);font-family:ui-monospace,monospace;font-size:10.5px}
 .del{color:var(--red);font-family:ui-monospace,monospace;font-size:10.5px}
-.dbar{display:flex;gap:1px;margin-left:auto}
-.dbar i{width:4px;height:8px;background:var(--bd-2);border-radius:1px}
-.dbar i.a{background:var(--grn)} .dbar i.d{background:var(--red)}
 .who{display:flex;align-items:center;gap:6px;min-width:0}
 .av{width:15px;height:15px;border-radius:3px;flex:0 0 15px;display:grid;place-items:center;
   font-size:8px;font-weight:800;color:#08111d}

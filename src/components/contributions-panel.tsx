@@ -8,7 +8,7 @@ type ContributionsPanelProps = {
   list: Commit[];
 };
 
-type AuthorStat = { a: Author; n: number; add: number; del: number; repos: Set<string> };
+type AuthorStat = { a: Author; n: number; repos: Set<string> };
 type RepoStat = { n: number; br: Map<string, number> };
 type Kpi = { key: string; label: string; value: string; detail: string };
 
@@ -19,22 +19,16 @@ export function ContributionsPanel({ list }: ContributionsPanelProps) {
     const days = new Set<string>();
     const byA = new Map<string, AuthorStat>();
     const byR = new Map<string, RepoStat>();
-    let add = 0;
-    let del = 0;
     let files = 0;
     for (const c of list) {
       days.add(iso(c.ts));
-      add += c.add;
-      del += c.del;
       files += c.files;
       let a = byA.get(c.a.email);
       if (!a) {
-        a = { a: c.a, n: 0, add: 0, del: 0, repos: new Set() };
+        a = { a: c.a, n: 0, repos: new Set() };
         byA.set(c.a.email, a);
       }
       a.n++;
-      a.add += c.add;
-      a.del += c.del;
       a.repos.add(c.repo);
       let r = byR.get(c.repo);
       if (!r) {
@@ -48,8 +42,6 @@ export function ContributionsPanel({ list }: ContributionsPanelProps) {
     const kpis: Kpi[] = [
       { key: "commits", label: "Commits", value: fmt(list.length), detail: `${(list.length / span).toFixed(1)} / active day` },
       { key: "authors", label: "Authors", value: String(byA.size), detail: `${(list.length / (byA.size || 1)).toFixed(0)} commits avg` },
-      { key: "add", label: "Additions", value: `+${fmt(add)}`, detail: "lines added" },
-      { key: "del", label: "Deletions", value: `−${fmt(del)}`, detail: "lines removed" },
       { key: "files", label: "Files touched", value: fmt(files), detail: "change events" },
       { key: "days", label: "Active days", value: String(span), detail: "with ≥1 commit" },
     ];
@@ -86,15 +78,13 @@ export function ContributionsPanel({ list }: ContributionsPanelProps) {
                   <th>Author</th>
                   <th className="r">Commits</th>
                   <th style={{ width: 96 }}>Share</th>
-                  <th className="r">+</th>
-                  <th className="r">−</th>
                   <th className="r">Repos</th>
                 </tr>
               </thead>
               <tbody>
                 {authors.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="hint">
+                    <td colSpan={4} className="hint">
                       No data in range.
                     </td>
                   </tr>
@@ -117,8 +107,6 @@ export function ContributionsPanel({ list }: ContributionsPanelProps) {
                         <i style={{ width: `${(x.n / top) * 100}%`, background: x.a.color }} />
                       </div>
                     </td>
-                    <td className="r add">+{fmt(x.add)}</td>
-                    <td className="r del">−{fmt(x.del)}</td>
                     <td className="r">{x.repos.size}</td>
                   </tr>
                 ))}

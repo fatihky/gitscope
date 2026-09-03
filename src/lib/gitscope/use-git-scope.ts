@@ -163,7 +163,7 @@ export function useGitScope({ repoConfigs, commits }: GitScopeInput) {
       sort === "old"
         ? (a, b) => a.ts - b.ts
         : sort === "size"
-          ? (a, b) => b.add + b.del - (a.add + a.del)
+          ? (a, b) => b.files - a.files
           : (a, b) => b.ts - a.ts,
     );
     return out;
