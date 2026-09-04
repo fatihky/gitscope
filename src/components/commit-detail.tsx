@@ -48,6 +48,13 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
   });
   const toggle = (key: SectionKey) => setOpen((o) => ({ ...o, [key]: !o[key] }));
 
+  const [copied, setCopied] = useState(false);
+  const copySha = () => {
+    navigator.clipboard.writeText(c.hash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
   const [diff, setDiff] = useState<CommitDiff | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -63,8 +70,8 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
   return (
     <>
       <div className="acts">
-        <button type="button" className="btn" title="Copy full SHA">
-          ⧉ SHA
+        <button type="button" className="btn" title="Copy full SHA" onClick={copySha}>
+          {copied ? "✓ Copied" : "⧉ SHA"}
         </button>
         <button type="button" className="btn">
           ↗ Open in remote
