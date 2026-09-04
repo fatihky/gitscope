@@ -56,12 +56,18 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
   };
 
   const [diff, setDiff] = useState<CommitDiff | null>(null);
+  const [diffError, setDiffError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     setDiff(null);
-    getCommitDiff(repo.path, c.hash).then((d) => {
-      if (!cancelled) setDiff(d);
-    });
+    setDiffError(null);
+    getCommitDiff(repo.path, c.hash)
+      .then((d) => {
+        if (!cancelled) setDiff(d);
+      })
+      .catch((err) => {
+        if (!cancelled) setDiffError(err instanceof Error ? err.message : String(err));
+      });
     return () => {
       cancelled = true;
     };
@@ -157,6 +163,8 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
                 </span>
               </div>
             ))
+          ) : diffError ? (
+            <div className="hint">Failed to load diff: {diffError}</div>
           ) : (
             <div className="hint">Loading diff…</div>
           )}
