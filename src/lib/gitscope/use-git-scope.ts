@@ -1,7 +1,7 @@
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
 import { DAY, iso } from "./format";
-import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
+import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
 
 function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRuntime> {
   const out: Record<string, RepoRuntime> = {};
@@ -41,9 +41,9 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const [customFrom, setCustomFrom] = useQueryState("from", parseAsString);
   const [customTo, setCustomTo] = useQueryState("to", parseAsString);
   const [q, setQInternal] = useState("");
-  const [author, setAuthor] = useState("");
+  const [author, setAuthor] = useQueryState("author", parseAsString.withDefault(""));
   const [merges, setMerges] = useState(true);
-  const [sort, setSort] = useState<SortMode>("new");
+  const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["new", "old"] as const).withDefault("new"));
   const [sel, setSel] = useState<number | null>(null);
   const [limit, setLimit] = useState(250);
   const [theme, setTheme] = useState<Theme>("dark");
@@ -69,7 +69,7 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
         setCustomTo(iso(now));
       }
     },
-    [customFrom, now, defaultRangePreset],
+    [customFrom, now, defaultRangePreset, setCustomFrom, setCustomTo, setPreset],
   );
 
   const repoRange = useCallback(
