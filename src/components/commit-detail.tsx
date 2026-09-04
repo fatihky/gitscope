@@ -69,9 +69,6 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
         <button type="button" className="btn">
           ↗ Open in remote
         </button>
-        <button type="button" className="btn" disabled title="Disabled in read-only mode">
-          ⤓ Checkout
-        </button>
       </div>
       <DetailSection title="Commit" open={open.commit} onToggle={() => toggle("commit")}>
         <div className="kv">
