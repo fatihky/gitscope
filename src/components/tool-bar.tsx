@@ -98,7 +98,7 @@ export function ToolBar({
           aria-pressed={preset === "prevworkday"}
           onClick={() => onPresetChange("prevworkday")}
         >
-          Prev workday
+          Prev WD
         </button>
         <button type="button" className="chip" aria-pressed={preset === "all"} onClick={() => onPresetChange("all")}>
           All
@@ -154,7 +154,7 @@ export function ToolBar({
         title="Edit export format"
         onClick={() => setShowFormatModal(true)}
       >
-        ⚙ Format
+        ⚙ Fmt
       </button>
       <ExportFormatModal
         open={showFormatModal}
@@ -165,7 +165,7 @@ export function ToolBar({
         repoById={repoById}
       />
       <button type="button" className="btn" title="Copy filtered commit list" onClick={copyList}>
-        {copied ? "✓ Copied" : "⧉ Copy list"}
+        {copied ? "✓ Copied" : "⧉ Copy"}
       </button>
     </div>
   );

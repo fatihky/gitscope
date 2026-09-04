@@ -69,35 +69,35 @@ kbd{
 
 /* ============ toolbar ============ */
 .toolbar{
-  height:34px;flex:0 0 34px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  height:28px;flex:0 0 28px;display:flex;align-items:center;gap:5px;padding:0 6px;
   background:var(--panel-2);border-bottom:1px solid var(--bd);overflow-x:auto;
 }
-.tlabel{color:var(--tx-3);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:600;white-space:nowrap}
+.tlabel{color:var(--tx-3);font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;white-space:nowrap}
 .seg{display:flex;border:1px solid var(--bd);border-radius:4px;overflow:hidden;background:var(--bg-2)}
-.seg button{height:22px;padding:0 8px;background:transparent;border:0;border-right:1px solid var(--bd);
-  cursor:pointer;color:var(--tx-2);white-space:nowrap}
+.seg button{height:18px;padding:0 6px;background:transparent;border:0;border-right:1px solid var(--bd);
+  cursor:pointer;color:var(--tx-2);white-space:nowrap;font-size:11px}
 .seg button:last-child{border-right:0}
 .seg button:hover{background:var(--panel)}
 .seg button[aria-pressed="true"]{background:var(--acc-bg);color:var(--acc);font-weight:600}
 .chips{display:flex;gap:4px}
 .chip{
-  height:22px;padding:0 8px;background:var(--bg-2);border:1px solid var(--bd);border-radius:11px;
-  cursor:pointer;color:var(--tx-2);white-space:nowrap
+  height:18px;padding:0 6px;background:var(--bg-2);border:1px solid var(--bd);border-radius:9px;
+  cursor:pointer;color:var(--tx-2);white-space:nowrap;font-size:10.5px
 }
 .chip:hover{border-color:var(--bd-2);color:var(--tx)}
 .chip[aria-pressed="true"]{background:var(--acc-bg);border-color:var(--acc);color:var(--acc);font-weight:600}
-.dtin{height:22px;padding:0 5px;background:var(--bg-2);border:1px solid var(--bd);border-radius:4px;outline:none;
-  font-family:ui-monospace,monospace;font-size:11px;color-scheme:dark}
+.dtin{height:18px;padding:0 4px;background:var(--bg-2);border:1px solid var(--bd);border-radius:3px;outline:none;
+  font-family:ui-monospace,monospace;font-size:10.5px;color-scheme:dark}
 .gitscope[data-theme="light"] .dtin{color-scheme:light}
 .dtin:focus{border-color:var(--acc)}
 .fmtin{width:220px}
-.fmt-btn{font-size:10.5px;gap:3px}
-.sel{height:22px;padding:0 4px;background:var(--bg-2);border:1px solid var(--bd);border-radius:4px;outline:none;cursor:pointer}
-.vr{width:1px;height:18px;background:var(--bd);flex:0 0 1px}
-.toggle{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--tx-2);white-space:nowrap;user-select:none}
+.fmt-btn{font-size:10px;gap:2px}
+.sel{height:18px;padding:0 3px;background:var(--bg-2);border:1px solid var(--bd);border-radius:3px;outline:none;cursor:pointer;font-size:11px}
+.vr{width:1px;height:14px;background:var(--bd);flex:0 0 1px}
+.toggle{display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--tx-2);white-space:nowrap;user-select:none;font-size:11px}
 .gitscope input[type=checkbox]{
-  appearance:none;width:12px;height:12px;border:1px solid var(--bd-2);border-radius:3px;
-  background:var(--bg-2);cursor:pointer;position:relative;flex:0 0 12px
+  appearance:none;width:11px;height:11px;border:1px solid var(--bd-2);border-radius:2px;
+  background:var(--bg-2);cursor:pointer;position:relative;flex:0 0 11px
 }
 .gitscope input[type=checkbox]:checked{background:var(--acc);border-color:var(--acc)}
 .gitscope input[type=checkbox]:checked::after{
@@ -281,7 +281,7 @@ kbd{
 .f .p{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--tx-2);direction:rtl;text-align:left;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acts{display:flex;gap:5px;padding:7px 10px;border-bottom:1px solid var(--bd);background:var(--panel-2)}
-.btn{height:23px;padding:0 9px;background:var(--bg-2);border:1px solid var(--bd);border-radius:4px;
+.btn{height:18px;padding:0 7px;background:var(--bg-2);border:1px solid var(--bd);border-radius:3px;font-size:10.5px;
   cursor:pointer;color:var(--tx-2);display:inline-flex;align-items:center;gap:5px}
 .btn:hover{border-color:var(--bd-2);color:var(--tx)}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
