@@ -1,15 +1,28 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import { diffLines } from "diff";
 import git from "isomorphic-git";
 import { colorForAuthor, colorForRepo, initialsFor } from "./palette";
 import type { Author, Commit, RepoConfig, RepoLoadError } from "./types";
 
+const execFileAsync = promisify(execFile);
+
 /** Skip line-diffing blobs larger than this (still counted as a changed file). */
 const MAX_DIFF_BYTES = 2 * 1024 * 1024;
 
 export type GitArgs = { fs: typeof fs; dir?: string; gitdir?: string };
-type LogEntry = Awaited<ReturnType<typeof git.log>>[number];
+
+/** Metadata for one commit, as parsed out of native `git log` output — see gitLog(). */
+type LogEntry = {
+  oid: string;
+  parentCount: number;
+  authorName: string;
+  authorEmail: string;
+  authorTimestamp: number; // seconds since epoch, matching isomorphic-git's commit.author.timestamp
+  subject: string;
+};
 
 export type RepoConfigsData = {
   repoConfigs: RepoConfig[];
@@ -71,8 +84,12 @@ export async function loadRepoConfigs(): Promise<RepoConfigsData> {
 
 /**
  * Commit load, run after the initial page load once the UI knows which repos/branches/date range
- * it wants. `since` limits how far back each branch is walked (isomorphic-git's log() has no
- * matching `until`, so an upper bound on the range still has to be applied client-side).
+ * it wants. `since` limits how far back each branch is walked (there's no matching `until`, so an
+ * upper bound on the range still has to be applied client-side).
+ *
+ * Walks history via the native `git log` binary rather than isomorphic-git: isomorphic-git parses
+ * packfiles in pure JS, which is an order of magnitude slower than the real thing for repos with
+ * thousands of commits. Tags/refs/blobs (small, infrequent) still go through isomorphic-git below.
  */
 export async function loadCommitsForRepos(
   selections: RepoCommitSelection[],
@@ -87,17 +104,19 @@ export async function loadCommitsForRepos(
     const gitArgs = resolveGitArgs(repoPath);
     const tagByOid = await loadTags(gitArgs);
 
-    // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that reaches it.
-    const claimed = new Set<string>();
+    // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that
+    // reaches it. `--not <already-walked branches>` pushes that exclusion into git itself, so each
+    // branch after the first only walks its own divergent commits instead of re-walking history it
+    // shares with earlier branches — the dominant cost once there are many branches.
     let count = 0;
+    const walkedBranches: string[] = [];
     for (const branch of branches) {
-      const log = await git.log({ ...gitArgs, ref: branch, includeChanges: false, since: since ?? undefined });
+      const log = await gitLog(gitArgs, branch, since, walkedBranches);
       for (const entry of log) {
-        if (claimed.has(entry.oid)) continue;
-        claimed.add(entry.oid);
         commits.push(buildCommit(id, branch, entry, tagByOid, authorsByKey));
         count++;
       }
+      walkedBranches.push(branch);
     }
     console.log(`[gitscope] loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`);
   }
@@ -122,6 +141,41 @@ export function resolveGitArgs(repoPath: string): GitArgs {
     return { fs, gitdir: repoPath };
   }
   return { fs, dir: repoPath };
+}
+
+// Field/record separators for git's --pretty=format: control chars that can't appear in the fields
+// themselves (author name/email/subject), so a naive split is safe.
+const FIELD_SEP = "\x1f";
+const RECORD_SEP = "\x1e";
+const LOG_FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%s"].join(FIELD_SEP) + RECORD_SEP;
+
+/**
+ * Walks `ref`'s history (all metadata, no diffs) via the native `git log` binary, excluding
+ * anything already reachable from `excludeRefs` (see the `--not` docs in `git log --help`).
+ */
+async function gitLog(gitArgs: GitArgs, ref: string, since: Date | null, excludeRefs: string[] = []): Promise<LogEntry[]> {
+  const repoArgs = gitArgs.dir ? ["-C", gitArgs.dir] : ["--git-dir", gitArgs.gitdir as string];
+  const args = [...repoArgs, "log", ref];
+  if (excludeRefs.length > 0) args.push("--not", ...excludeRefs);
+  args.push(`--pretty=format:${LOG_FORMAT}`);
+  if (since) args.push(`--since=${since.toISOString()}`);
+
+  const { stdout } = await execFileAsync("git", args, { maxBuffer: 256 * 1024 * 1024 });
+  return stdout
+    .split(RECORD_SEP)
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const [oid, parents, authorName, authorEmail, authorTimestamp, subject] = record.split(FIELD_SEP);
+      return {
+        oid,
+        parentCount: parents ? parents.split(" ").filter(Boolean).length : 0,
+        authorName,
+        authorEmail,
+        authorTimestamp: Number(authorTimestamp),
+        subject,
+      };
+    });
 }
 
 function uniqueId(base: string, usedIds: Set<string>): string {
@@ -208,9 +262,9 @@ function getOrCreateAuthor(map: Map<string, Author>, name: string, email: string
   return a;
 }
 
-// Building the commit list only needs metadata; entry.commit.changes is absent (includeChanges: false above),
-// so files/paths default to empty here. Both the changed-file list and line-level add/del counts are computed
-// on demand for a single commit at a time — see getCommitDiff in commit-diff.ts.
+// Building the commit list only needs metadata, not diffs — files/paths default to empty here.
+// Both the changed-file list and line-level add/del counts are computed on demand for a single
+// commit at a time — see getCommitDiff in commit-diff.ts.
 function buildCommit(
   repoId: string,
   branch: string,
@@ -218,21 +272,18 @@ function buildCommit(
   tagByOid: Map<string, string>,
   authorsByKey: Map<string, Author>,
 ): Commit {
-  const { commit, oid } = entry;
-  const changes = (commit.changes ?? []) as [string | null, string | null, string][];
-
   return {
     i: 0, // reassigned once the full, sorted commit list is known
-    hash: oid,
+    hash: entry.oid,
     repo: repoId,
     branch,
-    a: getOrCreateAuthor(authorsByKey, commit.author.name, commit.author.email),
-    ts: commit.author.timestamp * 1000,
-    merge: commit.parent.length > 1,
-    subject: commit.message.split("\n")[0],
-    files: changes.length,
-    tag: tagByOid.get(oid) ?? null,
-    paths: changes.map(([, , filepath]) => filepath),
+    a: getOrCreateAuthor(authorsByKey, entry.authorName, entry.authorEmail),
+    ts: entry.authorTimestamp * 1000,
+    merge: entry.parentCount > 1,
+    subject: entry.subject,
+    files: 0,
+    tag: tagByOid.get(entry.oid) ?? null,
+    paths: [],
   };
 }
 
