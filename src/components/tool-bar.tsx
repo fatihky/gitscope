@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatCommit } from "@/lib/gitscope/format";
 import type { Author, Commit, RepoConfig, ScopeMode, SortMode } from "@/lib/gitscope/types";
+import { ExportFormatModal } from "./export-format-modal";
 
 /** e.g. 7 -> "7D", 365 -> "1Y", 730 -> "2Y" */
 function labelForDays(days: number): string {
@@ -57,6 +58,7 @@ export function ToolBar({
   onExportFormatChange,
 }: ToolBarProps) {
   const [copied, setCopied] = useState(false);
+  const [showFormatModal, setShowFormatModal] = useState(false);
   const copyList = () => {
     const text = list
       .map((c) => formatCommit(exportFormat, c, repoById[c.repo]?.name ?? c.repo))
@@ -146,12 +148,21 @@ export function ToolBar({
         <option value="old">Oldest first</option>
       </select>
       <div className="vr" />
-      <input
-        className="dtin fmtin"
-        type="text"
-        value={exportFormat}
-        onChange={(e) => onExportFormatChange(e.target.value)}
-        title="Copy format. Tokens: {repo} {date} {author} {subject} {hash} {shortHash}"
+      <button
+        type="button"
+        className="btn fmt-btn"
+        title="Edit export format"
+        onClick={() => setShowFormatModal(true)}
+      >
+        ⚙ Format
+      </button>
+      <ExportFormatModal
+        open={showFormatModal}
+        onClose={() => setShowFormatModal(false)}
+        format={exportFormat}
+        onFormatChange={onExportFormatChange}
+        sampleCommits={list}
+        repoById={repoById}
       />
       <button type="button" className="btn" title="Copy filtered commit list" onClick={copyList}>
         {copied ? "✓ Copied" : "⧉ Copy list"}
