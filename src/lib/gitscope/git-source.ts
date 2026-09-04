@@ -147,7 +147,32 @@ async function loadRepoConfig(repoPath: string, usedIds: Set<string>): Promise<R
   console.log(`[gitscope]   ${branches.length} branch(es): ${branches.join(", ")}`);
 
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
-  return { id, name: id, lang: colorForRepo(id), path: repoPath, branches };
+  const remoteUrl = await loadRemoteUrl(gitArgs);
+  return { id, name: id, lang: colorForRepo(id), path: repoPath, branches, remoteUrl };
+}
+
+/** Reads the origin remote and normalizes it to a browsable https URL, or null if there isn't one. */
+async function loadRemoteUrl(gitArgs: GitArgs): Promise<string | null> {
+  const url = await git.getConfig({ ...gitArgs, path: "remote.origin.url" }).catch(() => undefined);
+  if (!url) return null;
+  return normalizeRemoteUrl(url);
+}
+
+/**
+ * Normalizes common origin URL forms to an https browse URL, e.g.:
+ * `git@host:org/repo.git`, `https://host/org/repo.git`, `ssh://git@host/org/repo.git` -> `https://host/org/repo`
+ */
+function normalizeRemoteUrl(url: string): string | null {
+  const scpMatch = url.match(/^[\w-]+@([^:]+):(.+?)(?:\.git)?$/);
+  if (scpMatch) return `https://${scpMatch[1]}/${scpMatch[2]}`;
+
+  const sshMatch = url.match(/^ssh:\/\/[\w-]+@([^/]+)\/(.+?)(?:\.git)?$/);
+  if (sshMatch) return `https://${sshMatch[1]}/${sshMatch[2]}`;
+
+  const httpsMatch = url.match(/^https:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/);
+  if (httpsMatch) return `https://${httpsMatch[1]}/${httpsMatch[2]}`;
+
+  return null;
 }
 
 async function loadTags(gitArgs: GitArgs): Promise<Map<string, string>> {

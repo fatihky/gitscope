@@ -11,6 +11,7 @@ export type RepoConfig = {
   lang: string;
   path: string;
   branches: string[];
+  remoteUrl: string | null;
 };
 
 export type RepoLoadError = {
