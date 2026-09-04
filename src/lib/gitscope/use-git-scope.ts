@@ -1,7 +1,19 @@
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DAY, iso, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
+
+const THEME_STORAGE_KEY = "gitscope:theme";
+
+function initialTheme(): Theme {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {
+    // ignore (private browsing, disabled storage, etc.)
+  }
+  return "dark";
+}
 
 function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRuntime> {
   const out: Record<string, RepoRuntime> = {};
@@ -50,9 +62,17 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["new", "old"] as const).withDefault("new"));
   const [sel, setSel] = useState<number | null>(null);
   const [limit, setLimit] = useState(250);
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>(initialTheme);
   const [showDetail, setShowDetail] = useState(true);
   const [tab, setTab] = useState<TabKey>("commits");
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // ignore (private browsing, disabled storage, etc.)
+    }
+  }, [theme]);
 
   const globalRange = useMemo<DateRange>(
     () => presetRange(preset, { from: customFrom, to: customTo }, now),
