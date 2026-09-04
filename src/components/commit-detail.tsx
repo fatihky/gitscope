@@ -66,7 +66,13 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
         <button type="button" className="btn" title="Copy full SHA">
           ⧉ SHA
         </button>
-        <button type="button" className="btn">
+        <button
+          type="button"
+          className="btn"
+          disabled={!repo.remoteUrl}
+          title={repo.remoteUrl ? undefined : "No remote configured"}
+          onClick={() => window.open(`${repo.remoteUrl}/commit/${c.hash}`, "_blank", "noopener,noreferrer")}
+        >
           ↗ Open in remote
         </button>
         <button type="button" className="btn" disabled title="Disabled in read-only mode">
