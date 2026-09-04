@@ -48,11 +48,11 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
   });
   const toggle = (key: SectionKey) => setOpen((o) => ({ ...o, [key]: !o[key] }));
 
-  const [copied, setCopied] = useState(false);
-  const copySha = () => {
-    navigator.clipboard.writeText(c.hash);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+  const [copied, setCopied] = useState<string | null>(null);
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1200);
   };
 
   const [diff, setDiff] = useState<CommitDiff | null>(null);
@@ -76,8 +76,8 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
   return (
     <>
       <div className="acts">
-        <button type="button" className="btn" title="Copy full SHA" onClick={copySha}>
-          {copied ? "✓ Copied" : "⧉ SHA"}
+        <button type="button" className="btn" title="Copy full SHA" onClick={() => copyToClipboard(c.hash, "sha")}>
+          {copied === "sha" ? "✓ Copied" : "⧉ SHA"}
         </button>
         <button
           type="button"
@@ -92,11 +92,41 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
       <DetailSection title="Commit" open={open.commit} onToggle={() => toggle("commit")}>
         <div className="kv">
           <span className="k">SHA</span>
-          <span className="v mono hash">{c.hash}</span>
+          <span className="v mono hash">
+            {c.hash}
+            <button
+              type="button"
+              className="copy-inline"
+              title="Copy full SHA"
+              onClick={() => copyToClipboard(c.hash, "full-hash")}
+            >
+              {copied === "full-hash" ? "✓" : "⧉"}
+            </button>
+          </span>
           <span className="k">Parents</span>
           <span className="v mono">
             {c.hash.slice(7, 14)}
-            {c.merge ? ` · ${c.hash.slice(14, 21)}` : ""}
+            <button
+              type="button"
+              className="copy-inline"
+              title="Copy short SHA"
+              onClick={() => copyToClipboard(c.hash.slice(7, 14), "short-hash")}
+            >
+              {copied === "short-hash" ? "✓" : "⧉"}
+            </button>
+            {c.merge && (
+              <>
+                {" "}· {c.hash.slice(14, 21)}
+                <button
+                  type="button"
+                  className="copy-inline"
+                  title="Copy second parent SHA"
+                  onClick={() => copyToClipboard(c.hash.slice(14, 21), "parent2-hash")}
+                >
+                  {copied === "parent2-hash" ? "✓" : "⧉"}
+                </button>
+              </>
+            )}
           </span>
           <span className="k">Repository</span>
           <span className="v">
@@ -127,7 +157,17 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
       </DetailSection>
       <DetailSection title="Message" open={open.message} onToggle={() => toggle("message")}>
         <div className="cmsg">
-          <span className="h1">{c.subject}</span>
+          <span className="h1">
+            {c.subject}
+            <button
+              type="button"
+              className="copy-inline"
+              title="Copy commit message"
+              onClick={() => copyToClipboard(c.subject, "message")}
+            >
+              {copied === "message" ? "✓" : "⧉"}
+            </button>
+          </span>
           {!c.merge && `Refs #${3000 + (c.i % 900)}\n\n`}
           {signOff}
         </div>
