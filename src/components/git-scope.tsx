@@ -157,6 +157,8 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
           onMergesChange={gs.setMerges}
           sort={gs.sort}
           onSortChange={gs.setSort}
+          list={gs.list}
+          repoById={repoById}
         />
         <div className="body">
           <RepoSidebar

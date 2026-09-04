@@ -1,6 +1,8 @@
 "use client";
 
-import type { Author, ScopeMode, SortMode } from "@/lib/gitscope/types";
+import { useState } from "react";
+import { full } from "@/lib/gitscope/format";
+import type { Author, Commit, RepoConfig, ScopeMode, SortMode } from "@/lib/gitscope/types";
 
 /** e.g. 7 -> "7D", 365 -> "1Y", 730 -> "2Y" */
 function labelForDays(days: number): string {
@@ -25,6 +27,8 @@ type ToolBarProps = {
   onMergesChange: (value: boolean) => void;
   sort: SortMode;
   onSortChange: (value: SortMode) => void;
+  list: Commit[];
+  repoById: Record<string, RepoConfig>;
 };
 
 export function ToolBar({
@@ -45,7 +49,18 @@ export function ToolBar({
   onMergesChange,
   sort,
   onSortChange,
+  list,
+  repoById,
 }: ToolBarProps) {
+  const [copied, setCopied] = useState(false);
+  const copyList = () => {
+    const text = list
+      .map((c) => `[${repoById[c.repo]?.name ?? c.repo}][${full(c.ts)}][${c.a.name}]: ${c.subject}`)
+      .join("\n");
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
   return (
     <div className="toolbar">
       <span className="tlabel">Date scope</span>
@@ -126,6 +141,10 @@ export function ToolBar({
         <option value="new">Newest first</option>
         <option value="old">Oldest first</option>
       </select>
+      <div className="vr" />
+      <button type="button" className="btn" title="Copy filtered commit list" onClick={copyList}>
+        {copied ? "✓ Copied" : "⧉ Copy list"}
+      </button>
     </div>
   );
 }
