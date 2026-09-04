@@ -7,10 +7,18 @@ type TopBarProps = {
   onQueryChange: (value: string) => void;
   onToggleTheme: () => void;
   onToggleDetail: () => void;
+  onShowShortcuts: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
 };
 
-export function TopBar({ query, onQueryChange, onToggleTheme, onToggleDetail, searchInputRef }: TopBarProps) {
+export function TopBar({
+  query,
+  onQueryChange,
+  onToggleTheme,
+  onToggleDetail,
+  onShowShortcuts,
+  searchInputRef,
+}: TopBarProps) {
   return (
     <header className="topbar">
       <div className="brand">
@@ -35,6 +43,9 @@ export function TopBar({ query, onQueryChange, onToggleTheme, onToggleDetail, se
       </button>
       <button type="button" className="iconbtn" onClick={onToggleTheme} title="Toggle theme">
         ◐
+      </button>
+      <button type="button" className="iconbtn" onClick={onShowShortcuts} title="Keyboard shortcuts (?)">
+        ⌘
       </button>
     </header>
   );

@@ -11,6 +11,7 @@ import { CommitsTable } from "./commits-table";
 import { ContributionsPanel } from "./contributions-panel";
 import "./git-scope.css";
 import { RepoSidebar } from "./repo-sidebar";
+import { ShortcutsModal } from "./shortcuts-modal";
 import { StatusBar } from "./status-bar";
 import { ToolBar } from "./tool-bar";
 import { TopBar } from "./top-bar";
@@ -54,6 +55,7 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
   // The `since` bound of the commits currently loaded; undefined until the first load, null once
   // full history has been fetched. A ref because updating it must never itself trigger a re-fetch.
   const loadedFromRef = useRef<string | null | undefined>(undefined);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const gs = useGitScope({ repoConfigs, commits, defaultRangePreset: String(rangePresets[0] ?? 30) });
   const repoById = useMemo(() => Object.fromEntries(repoConfigs.map((r) => [r.id, r])), [repoConfigs]);
@@ -100,6 +102,11 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
         return;
       }
       if (e.key === "Escape") input?.blur();
+      if (e.key === "?" && document.activeElement !== input) {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
       if ((e.key === "j" || e.key === "k") && (document.activeElement as HTMLElement | null)?.tagName !== "INPUT") {
         const idx = gs.list.findIndex((c) => c.i === gs.sel);
         const next = e.key === "j" ? Math.min(gs.list.length - 1, idx + 1) : Math.max(0, idx - 1);
@@ -137,6 +144,7 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
           onQueryChange={gs.setQ}
           onToggleTheme={() => gs.setTheme(gs.theme === "dark" ? "light" : "dark")}
           onToggleDetail={() => gs.setShowDetail(!gs.showDetail)}
+          onShowShortcuts={() => setShowShortcuts(true)}
           searchInputRef={searchInputRef}
         />
         <ToolBar
@@ -214,6 +222,7 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
           commitsLoading={commitsLoading}
         />
       </div>
+      <ShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

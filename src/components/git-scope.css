@@ -286,6 +286,20 @@ kbd{
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 .hint{padding:8px 10px;color:var(--tx-3);font-size:10.5px}
 
+/* ---- shortcuts modal ---- */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:100;
+}
+.modal{
+  width:320px;max-width:90vw;background:var(--panel);border:1px solid var(--bd);border-radius:6px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.modal-body{padding:6px 10px}
+.shortcut-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--bd) 40%,transparent)}
+.shortcut-row:last-child{border-bottom:0}
+.shortcut-row kbd{min-width:26px;text-align:center}
+.shortcut-row span{color:var(--tx-2)}
+
 /* ---- statusbar ---- */
 .status{
   height:22px;flex:0 0 22px;display:flex;align-items:center;gap:10px;padding:0 10px;
