@@ -4,6 +4,7 @@ import { DAY, iso, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
 
 const THEME_STORAGE_KEY = "gitscope:theme";
+const REPO_OPEN_STORAGE_KEY = "gitscope:repoOpen";
 
 function initialTheme(): Theme {
   try {
@@ -15,11 +16,21 @@ function initialTheme(): Theme {
   return "dark";
 }
 
-function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRuntime> {
+function initialOpenState(): Record<string, boolean> {
+  try {
+    const stored = localStorage.getItem(REPO_OPEN_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {
+    // ignore (private browsing, disabled storage, etc.)
+  }
+  return {};
+}
+
+function initialRepoRuntime(repoConfigs: RepoConfig[], openState: Record<string, boolean>): Record<string, RepoRuntime> {
   const out: Record<string, RepoRuntime> = {};
-  repoConfigs.forEach((r, index) => {
+  repoConfigs.forEach((r) => {
     out[r.id] = {
-      open: index === 0,
+      open: openState[r.id] ?? false,
       on: true,
       bon: new Set(r.branches),
       range: null,
@@ -51,7 +62,9 @@ export type GitScopeInput = {
 
 export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }: GitScopeInput) {
   const [now] = useState(() => Date.now());
-  const [repos, setRepos] = useState<Record<string, RepoRuntime>>(() => initialRepoRuntime(repoConfigs));
+  const [repos, setRepos] = useState<Record<string, RepoRuntime>>(() =>
+    initialRepoRuntime(repoConfigs, initialOpenState()),
+  );
   const [scope, setScope] = useState<ScopeMode>("global");
   const [preset, setPreset] = useQueryState("preset", parseAsString.withDefault(defaultRangePreset));
   const [customFrom, setCustomFrom] = useQueryState("from", parseAsString);
@@ -73,6 +86,16 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
       // ignore (private browsing, disabled storage, etc.)
     }
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      const openState: Record<string, boolean> = {};
+      for (const id in repos) openState[id] = repos[id].open;
+      localStorage.setItem(REPO_OPEN_STORAGE_KEY, JSON.stringify(openState));
+    } catch {
+      // ignore (private browsing, disabled storage, etc.)
+    }
+  }, [repos]);
 
   const globalRange = useMemo<DateRange>(
     () => presetRange(preset, { from: customFrom, to: customTo }, now),
