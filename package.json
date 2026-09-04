@@ -1,10 +1,19 @@
 {
   "name": "gitscope",
   "version": "0.1.0",
-  "private": true,
+  "bin": {
+    "gitscope": "./bin/gitscope.mjs"
+  },
+  "files": [
+    "bin/",
+    ".next/standalone/",
+    ".next/static/",
+    "public/"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prepublishOnly": "next build",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
