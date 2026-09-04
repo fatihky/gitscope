@@ -63,10 +63,15 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const setPresetChoice = useCallback(
     (p: string) => {
       setPreset(p);
-      if (p === "custom" && !customFrom) {
-        const seedDays = Number(defaultRangePreset) || 30;
-        setCustomFrom(iso(now - seedDays * DAY));
-        setCustomTo(iso(now));
+      if (p === "custom") {
+        if (!customFrom) {
+          const seedDays = Number(defaultRangePreset) || 30;
+          setCustomFrom(iso(now - seedDays * DAY));
+          setCustomTo(iso(now));
+        }
+      } else {
+        setCustomFrom(null);
+        setCustomTo(null);
       }
     },
     [customFrom, now, defaultRangePreset, setCustomFrom, setCustomTo, setPreset],
