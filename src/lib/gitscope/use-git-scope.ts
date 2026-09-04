@@ -1,4 +1,4 @@
-import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DAY, DEFAULT_EXPORT_FORMAT, iso, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
@@ -82,7 +82,7 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const [customTo, setCustomTo] = useQueryState("to", parseAsString);
   const [q, setQInternal] = useState("");
   const [author, setAuthor] = useQueryState("author", parseAsString.withDefault(""));
-  const [merges, setMerges] = useState(true);
+  const [merges, setMerges] = useQueryState("merges", parseAsBoolean.withDefault(true));
   const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["new", "old"] as const).withDefault("new"));
   const [sel, setSel] = useState<number | null>(null);
   const [limit, setLimit] = useState(250);
