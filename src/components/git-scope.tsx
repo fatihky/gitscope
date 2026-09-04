@@ -159,6 +159,8 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
           onSortChange={gs.setSort}
           list={gs.list}
           repoById={repoById}
+          exportFormat={gs.exportFormat}
+          onExportFormatChange={gs.setExportFormat}
         />
         <div className="body">
           <RepoSidebar

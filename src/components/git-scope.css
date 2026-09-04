@@ -90,6 +90,7 @@ kbd{
   font-family:ui-monospace,monospace;font-size:11px;color-scheme:dark}
 .gitscope[data-theme="light"] .dtin{color-scheme:light}
 .dtin:focus{border-color:var(--acc)}
+.fmtin{width:220px}
 .sel{height:22px;padding:0 4px;background:var(--bg-2);border:1px solid var(--bd);border-radius:4px;outline:none;cursor:pointer}
 .vr{width:1px;height:18px;background:var(--bd);flex:0 0 1px}
 .toggle{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--tx-2);white-space:nowrap;user-select:none}

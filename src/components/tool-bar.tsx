@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { full } from "@/lib/gitscope/format";
+import { formatCommit } from "@/lib/gitscope/format";
 import type { Author, Commit, RepoConfig, ScopeMode, SortMode } from "@/lib/gitscope/types";
 
 /** e.g. 7 -> "7D", 365 -> "1Y", 730 -> "2Y" */
@@ -29,6 +29,8 @@ type ToolBarProps = {
   onSortChange: (value: SortMode) => void;
   list: Commit[];
   repoById: Record<string, RepoConfig>;
+  exportFormat: string;
+  onExportFormatChange: (value: string) => void;
 };
 
 export function ToolBar({
@@ -51,11 +53,13 @@ export function ToolBar({
   onSortChange,
   list,
   repoById,
+  exportFormat,
+  onExportFormatChange,
 }: ToolBarProps) {
   const [copied, setCopied] = useState(false);
   const copyList = () => {
     const text = list
-      .map((c) => `[${repoById[c.repo]?.name ?? c.repo}][${full(c.ts)}][${c.a.name}]: ${c.subject}`)
+      .map((c) => formatCommit(exportFormat, c, repoById[c.repo]?.name ?? c.repo))
       .join("\n");
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -142,6 +146,13 @@ export function ToolBar({
         <option value="old">Oldest first</option>
       </select>
       <div className="vr" />
+      <input
+        className="dtin fmtin"
+        type="text"
+        value={exportFormat}
+        onChange={(e) => onExportFormatChange(e.target.value)}
+        title="Copy format. Tokens: {repo} {date} {author} {subject} {hash} {shortHash}"
+      />
       <button type="button" className="btn" title="Copy filtered commit list" onClick={copyList}>
         {copied ? "✓ Copied" : "⧉ Copy list"}
       </button>

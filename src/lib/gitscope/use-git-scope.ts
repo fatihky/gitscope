@@ -1,10 +1,11 @@
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DAY, iso, previousWorkday } from "./format";
+import { DAY, DEFAULT_EXPORT_FORMAT, iso, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
 
 const THEME_STORAGE_KEY = "gitscope:theme";
 const REPO_OPEN_STORAGE_KEY = "gitscope:repoOpen";
+const EXPORT_FORMAT_STORAGE_KEY = "gitscope:exportFormat";
 
 function initialTheme(): Theme {
   try {
@@ -24,6 +25,16 @@ function initialOpenState(): Record<string, boolean> {
     // ignore (private browsing, disabled storage, etc.)
   }
   return {};
+}
+
+function initialExportFormat(): string {
+  try {
+    const stored = localStorage.getItem(EXPORT_FORMAT_STORAGE_KEY);
+    if (stored) return stored;
+  } catch {
+    // ignore (private browsing, disabled storage, etc.)
+  }
+  return DEFAULT_EXPORT_FORMAT;
 }
 
 function initialRepoRuntime(repoConfigs: RepoConfig[], openState: Record<string, boolean>): Record<string, RepoRuntime> {
@@ -76,6 +87,7 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
   const [sel, setSel] = useState<number | null>(null);
   const [limit, setLimit] = useState(250);
   const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [exportFormat, setExportFormat] = useState<string>(initialExportFormat);
   const [showDetail, setShowDetail] = useState(true);
   const [tab, setTab] = useState<TabKey>("commits");
 
@@ -86,6 +98,14 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
       // ignore (private browsing, disabled storage, etc.)
     }
   }, [theme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXPORT_FORMAT_STORAGE_KEY, exportFormat);
+    } catch {
+      // ignore (private browsing, disabled storage, etc.)
+    }
+  }, [exportFormat]);
 
   useEffect(() => {
     try {
@@ -260,6 +280,8 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
     setSort,
     theme,
     setTheme,
+    exportFormat,
+    setExportFormat,
     showDetail,
     setShowDetail,
     tab,
