@@ -17,6 +17,14 @@ export const full = (t: number): string =>
     hour12: false,
   });
 
+/** ISO date (local calendar) of the last weekday before today: Mon -> Fri, Sun -> Fri, else yesterday. */
+export const previousWorkday = (now: number): string => {
+  const d = new Date(now);
+  const back = d.getDay() === 0 ? 2 : d.getDay() === 1 ? 3 : 1;
+  d.setDate(d.getDate() - back);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 export const ago = (t: number): string => {
   const s = (Date.now() - t) / 1e3;
   if (s < 3600) return `${Math.floor(s / 60)}m`;

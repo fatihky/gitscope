@@ -1,6 +1,6 @@
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
-import { DAY, iso } from "./format";
+import { DAY, iso, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
 
 function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRuntime> {
@@ -19,6 +19,10 @@ function initialRepoRuntime(repoConfigs: RepoConfig[]): Record<string, RepoRunti
 function presetRange(preset: string, custom: DateRange, now: number): DateRange {
   if (preset === "all") return { from: null, to: null };
   if (preset === "custom") return custom;
+  if (preset === "prevworkday") {
+    const day = previousWorkday(now);
+    return { from: day, to: day };
+  }
   const to = now;
   const from = now - Number(preset) * DAY;
   return { from: iso(from), to: iso(to) };

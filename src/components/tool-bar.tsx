@@ -71,6 +71,14 @@ export function ToolBar({
             {labelForDays(days)}
           </button>
         ))}
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={preset === "prevworkday"}
+          onClick={() => onPresetChange("prevworkday")}
+        >
+          Prev workday
+        </button>
         <button type="button" className="chip" aria-pressed={preset === "all"} onClick={() => onPresetChange("all")}>
           All
         </button>
