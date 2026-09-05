@@ -1,9 +1,7 @@
 import { execFile } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import { diffLines } from "diff";
-import git from "isomorphic-git";
 import { colorForAuthor, colorForRepo, initialsFor } from "./palette";
 import type { Author, Commit, RepoConfig, RepoLoadError } from "./types";
 
@@ -12,7 +10,13 @@ const execFileAsync = promisify(execFile);
 /** Skip line-diffing blobs larger than this (still counted as a changed file). */
 const MAX_DIFF_BYTES = 2 * 1024 * 1024;
 
-export type GitArgs = { fs: typeof fs; dir?: string; gitdir?: string };
+/** Generous ceiling for `git` stdout — history/blob dumps on large repos can get big. */
+const MAX_BUFFER = 256 * 1024 * 1024;
+
+/** Git's built-in empty-tree object, used to diff a root commit (no parent) as an all-additions change. */
+export const EMPTY_TREE_OID = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+export type GitArgs = { dir: string };
 
 /** Metadata for one commit, as parsed out of native `git log` output — see gitLog(). */
 type LogEntry = {
@@ -20,7 +24,7 @@ type LogEntry = {
   parentCount: number;
   authorName: string;
   authorEmail: string;
-  authorTimestamp: number; // seconds since epoch, matching isomorphic-git's commit.author.timestamp
+  authorTimestamp: number; // seconds since epoch
   subject: string;
 };
 
@@ -30,7 +34,11 @@ export type RepoConfigsData = {
 };
 
 /** A repo + the branches to walk, as chosen by the UI (order matters — see loadCommitsForRepos). */
-export type RepoCommitSelection = { id: string; path: string; branches: string[] };
+export type RepoCommitSelection = {
+  id: string;
+  path: string;
+  branches: string[];
+};
 
 /** Repository paths configured via the GITSCOPE_REPOS env var (comma-separated). */
 export function getConfiguredRepoPaths(): string[] {
@@ -70,10 +78,15 @@ export async function loadRepoConfigs(): Promise<RepoConfigsData> {
     try {
       const repo = await loadRepoConfig(repoPath, usedIds);
       repoConfigs.push(repo);
-      console.log(`[gitscope] loaded repo config ${repo.id}: ${repo.branches.length} branch(es)`);
+      console.log(
+        `[gitscope] loaded repo config ${repo.id}: ${repo.branches.length} branch(es)`,
+      );
     } catch (err) {
       console.log(`[gitscope] failed to load repo ${repoPath}`, err);
-      errors.push({ path: repoPath, message: err instanceof Error ? err.message : String(err) });
+      errors.push({
+        path: repoPath,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -87,9 +100,9 @@ export async function loadRepoConfigs(): Promise<RepoConfigsData> {
  * it wants. `since` limits how far back each branch is walked (there's no matching `until`, so an
  * upper bound on the range still has to be applied client-side).
  *
- * Walks history via the native `git log` binary rather than isomorphic-git: isomorphic-git parses
- * packfiles in pure JS, which is an order of magnitude slower than the real thing for repos with
- * thousands of commits. Tags/refs/blobs (small, infrequent) still go through isomorphic-git below.
+ * Everything here shells out to the native `git` binary rather than a JS git implementation:
+ * history/blob/tag walking in pure JS is an order of magnitude slower than the real thing for repos
+ * with thousands of commits.
  */
 export async function loadCommitsForRepos(
   selections: RepoCommitSelection[],
@@ -118,7 +131,9 @@ export async function loadCommitsForRepos(
       }
       walkedBranches.push(branch);
     }
-    console.log(`[gitscope] loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`);
+    console.log(
+      `[gitscope] loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`,
+    );
   }
 
   commits.sort((a, b) => b.ts - a.ts);
@@ -126,47 +141,76 @@ export async function loadCommitsForRepos(
     c.i = i;
   });
 
-  console.log(`[gitscope] commit load done in ${Date.now() - start}ms (${commits.length} commits total)`);
+  console.log(
+    `[gitscope] commit load done in ${Date.now() - start}ms (${commits.length} commits total)`,
+  );
 
   return {
     commits,
-    authors: Array.from(authorsByKey.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    authors: Array.from(authorsByKey.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    ),
   };
 }
 
-/** Node's `fs` module works as isomorphic-git's fs client directly; only the dir-vs-gitdir shape differs for bare repos. */
+/**
+ * `git -C <path>` auto-detects whether `<path>` is a normal working copy or a bare repo, so this is
+ * just a light normalization step (kept as its own function/type for a stable call-site shape).
+ */
 export function resolveGitArgs(repoPath: string): GitArgs {
-  if (fs.existsSync(path.join(repoPath, ".git"))) return { fs, dir: repoPath };
-  if (fs.existsSync(path.join(repoPath, "HEAD")) && fs.existsSync(path.join(repoPath, "objects"))) {
-    return { fs, gitdir: repoPath };
-  }
-  return { fs, dir: repoPath };
+  return { dir: repoPath };
+}
+
+/** Runs `git <args>` against a repo, returning trimmed-nothing stdout as text. */
+export async function runGit(
+  gitArgs: GitArgs,
+  args: string[],
+): Promise<string> {
+  const { stdout } = await execFileAsync("git", ["-C", gitArgs.dir, ...args], {
+    maxBuffer: MAX_BUFFER,
+  });
+  return stdout;
+}
+
+/** Same as runGit, but returns raw stdout bytes (for blob contents, which may not be UTF-8/text at all). */
+async function runGitBuffer(gitArgs: GitArgs, args: string[]): Promise<Buffer> {
+  const { stdout } = await execFileAsync("git", ["-C", gitArgs.dir, ...args], {
+    maxBuffer: MAX_BUFFER,
+    encoding: "buffer",
+  });
+  return stdout as unknown as Buffer;
 }
 
 // Field/record separators for git's --pretty=format: control chars that can't appear in the fields
 // themselves (author name/email/subject), so a naive split is safe.
 const FIELD_SEP = "\x1f";
 const RECORD_SEP = "\x1e";
-const LOG_FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%s"].join(FIELD_SEP) + RECORD_SEP;
+const LOG_FORMAT =
+  ["%H", "%P", "%an", "%ae", "%at", "%s"].join(FIELD_SEP) + RECORD_SEP;
 
 /**
  * Walks `ref`'s history (all metadata, no diffs) via the native `git log` binary, excluding
  * anything already reachable from `excludeRefs` (see the `--not` docs in `git log --help`).
  */
-async function gitLog(gitArgs: GitArgs, ref: string, since: Date | null, excludeRefs: string[] = []): Promise<LogEntry[]> {
-  const repoArgs = gitArgs.dir ? ["-C", gitArgs.dir] : ["--git-dir", gitArgs.gitdir as string];
-  const args = [...repoArgs, "log", ref];
+async function gitLog(
+  gitArgs: GitArgs,
+  ref: string,
+  since: Date | null,
+  excludeRefs: string[] = [],
+): Promise<LogEntry[]> {
+  const args = ["log", ref];
   if (excludeRefs.length > 0) args.push("--not", ...excludeRefs);
   args.push(`--pretty=format:${LOG_FORMAT}`);
   if (since) args.push(`--since=${since.toISOString()}`);
 
-  const { stdout } = await execFileAsync("git", args, { maxBuffer: 256 * 1024 * 1024 });
+  const stdout = await runGit(gitArgs, args);
   return stdout
     .split(RECORD_SEP)
     .map((r) => r.trim())
     .filter(Boolean)
     .map((record) => {
-      const [oid, parents, authorName, authorEmail, authorTimestamp, subject] = record.split(FIELD_SEP);
+      const [oid, parents, authorName, authorEmail, authorTimestamp, subject] =
+        record.split(FIELD_SEP);
       return {
         oid,
         parentCount: parents ? parents.split(" ").filter(Boolean).length : 0,
@@ -186,30 +230,73 @@ function uniqueId(base: string, usedIds: Set<string>): string {
   return id;
 }
 
-async function loadRepoConfig(repoPath: string, usedIds: Set<string>): Promise<RepoConfig> {
+async function loadRepoConfig(
+  repoPath: string,
+  usedIds: Set<string>,
+): Promise<RepoConfig> {
   const gitArgs = resolveGitArgs(repoPath);
 
-  const branchNames = await git.listBranches(gitArgs);
+  const branchNames = await listBranches(gitArgs);
   if (branchNames.length === 0) throw new Error("repository has no branches");
 
-  const current = await git.currentBranch({ ...gitArgs, fullname: false }).catch(() => undefined);
+  const current = await currentBranch(gitArgs).catch(() => undefined);
   const defaultBranch =
     current && branchNames.includes(current)
       ? current
-      : (["main", "master"].find((b) => branchNames.includes(b)) ?? branchNames[0]);
-  const branches = [defaultBranch, ...branchNames.filter((b) => b !== defaultBranch).sort()];
-  console.log(`[gitscope]   ${branches.length} branch(es): ${branches.join(", ")}`);
+      : (["main", "master"].find((b) => branchNames.includes(b)) ??
+        branchNames[0]);
+  const branches = [
+    defaultBranch,
+    ...branchNames.filter((b) => b !== defaultBranch).sort(),
+  ];
+  console.log(
+    `[gitscope]   ${branches.length} branch(es): ${branches.join(", ")}`,
+  );
 
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
   const remoteUrl = await loadRemoteUrl(gitArgs);
-  return { id, name: id, lang: colorForRepo(id), path: repoPath, branches, remoteUrl };
+  return {
+    id,
+    name: id,
+    lang: colorForRepo(id),
+    path: repoPath,
+    branches,
+    remoteUrl,
+  };
+}
+
+async function listBranches(gitArgs: GitArgs): Promise<string[]> {
+  const stdout = await runGit(gitArgs, [
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/heads",
+  ]);
+  return stdout
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Short name of the branch HEAD points to, or undefined for a detached HEAD. */
+async function currentBranch(gitArgs: GitArgs): Promise<string | undefined> {
+  const stdout = await runGit(gitArgs, [
+    "symbolic-ref",
+    "--short",
+    "-q",
+    "HEAD",
+  ]);
+  return stdout.trim() || undefined;
 }
 
 /** Reads the origin remote and normalizes it to a browsable https URL, or null if there isn't one. */
 async function loadRemoteUrl(gitArgs: GitArgs): Promise<string | null> {
-  const url = await git.getConfig({ ...gitArgs, path: "remote.origin.url" }).catch(() => undefined);
+  const url = await runGit(gitArgs, [
+    "config",
+    "--get",
+    "remote.origin.url",
+  ]).catch(() => undefined);
   if (!url) return null;
-  return normalizeRemoteUrl(url);
+  return normalizeRemoteUrl(url.trim());
 }
 
 /**
@@ -229,21 +316,28 @@ function normalizeRemoteUrl(url: string): string | null {
   return null;
 }
 
+async function listTagNames(gitArgs: GitArgs): Promise<string[]> {
+  const stdout = await runGit(gitArgs, [
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/tags",
+  ]);
+  return stdout
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 async function loadTags(gitArgs: GitArgs): Promise<Map<string, string>> {
   const tagByOid = new Map<string, string>();
-  const tagNames = await git.listTags(gitArgs).catch(() => []);
+  const tagNames = await listTagNames(gitArgs).catch(() => []);
   for (const tag of tagNames) {
     try {
-      let oid = await git.resolveRef({ ...gitArgs, ref: `refs/tags/${tag}` });
-      // peel annotated tags down to the commit they point at
-      for (let i = 0; i < 5; i++) {
-        try {
-          await git.readCommit({ ...gitArgs, oid });
-          break;
-        } catch {
-          oid = (await git.readTag({ ...gitArgs, oid })).tag.object;
-        }
-      }
+      // `^{commit}` peels annotated tags (recursively) down to the commit they point at; it fails
+      // for tags that ultimately point at something else (e.g. a blob/tree), which we skip below.
+      const oid = (
+        await runGit(gitArgs, ["rev-parse", `refs/tags/${tag}^{commit}`])
+      ).trim();
       if (!tagByOid.has(oid)) tagByOid.set(oid, tag);
     } catch {
       // tag doesn't resolve to a commit (e.g. tags a blob/tree) — skip it
@@ -252,7 +346,11 @@ async function loadTags(gitArgs: GitArgs): Promise<Map<string, string>> {
   return tagByOid;
 }
 
-function getOrCreateAuthor(map: Map<string, Author>, name: string, email: string): Author {
+function getOrCreateAuthor(
+  map: Map<string, Author>,
+  name: string,
+  email: string,
+): Author {
   const key = email || name;
   let a = map.get(key);
   if (!a) {
@@ -287,13 +385,22 @@ function buildCommit(
   };
 }
 
-export async function diffStats(gitArgs: GitArgs, newOid: string | null, oldOid: string | null) {
-  const [oldText, newText] = await Promise.all([blobText(gitArgs, oldOid), blobText(gitArgs, newOid)]);
+export async function diffStats(
+  gitArgs: GitArgs,
+  newOid: string | null,
+  oldOid: string | null,
+) {
+  const [oldText, newText] = await Promise.all([
+    blobText(gitArgs, oldOid),
+    blobText(gitArgs, newOid),
+  ]);
   if (oldText === null || newText === null) return { add: 0, del: 0 };
   let add = 0;
   let del = 0;
   for (const part of diffLines(oldText, newText)) {
-    const lines = part.value.endsWith("\n") ? part.value.split("\n").length - 1 : part.value.split("\n").length;
+    const lines = part.value.endsWith("\n")
+      ? part.value.split("\n").length - 1
+      : part.value.split("\n").length;
     if (part.added) add += lines;
     else if (part.removed) del += lines;
   }
@@ -301,11 +408,14 @@ export async function diffStats(gitArgs: GitArgs, newOid: string | null, oldOid:
 }
 
 /** Returns null for binary or oversized blobs, "" for a missing side (added/deleted file), else utf-8 text. */
-async function blobText(gitArgs: GitArgs, oid: string | null): Promise<string | null> {
+async function blobText(
+  gitArgs: GitArgs,
+  oid: string | null,
+): Promise<string | null> {
   if (!oid) return "";
-  const { blob } = await git.readBlob({ ...gitArgs, oid });
+  const blob = await runGitBuffer(gitArgs, ["cat-file", "-p", oid]);
   if (blob.length > MAX_DIFF_BYTES || isBinary(blob)) return null;
-  return Buffer.from(blob).toString("utf-8");
+  return blob.toString("utf-8");
 }
 
 function isBinary(buf: Uint8Array): boolean {
