@@ -23,7 +23,7 @@ no cloning, no server-side database.
 - **Activity view** — a GitHub-style commit heatmap (last ~53 weeks), a weekday × hour punchcard,
   and commit volume over time.
 - **Copy filtered results** — copy the currently filtered commit list, or a single commit's SHA, to
-  the clipboard.
+  the clipboard, optionally including each commit's full diff (`git show` output).
 - **Shareable links** — filter state (date preset/range, author, sort) is kept in the URL query
   string, so a filtered view can be bookmarked or shared.
 - **JSON API** — `GET /api/commits` returns the same filtered commit data as JSON, for scripting or

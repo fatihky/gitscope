@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getCommitPatches } from "@/lib/gitscope/commit-diff";
 import { formatCommit } from "@/lib/gitscope/format";
 import type { Author, Commit, RepoConfig, ScopeMode, SortMode } from "@/lib/gitscope/types";
 import { ExportFormatModal } from "./export-format-modal";
@@ -58,14 +59,28 @@ export function ToolBar({
   onExportFormatChange,
 }: ToolBarProps) {
   const [copied, setCopied] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [includeDiffs, setIncludeDiffs] = useState(false);
   const [showFormatModal, setShowFormatModal] = useState(false);
-  const copyList = () => {
-    const text = list
-      .map((c) => formatCommit(exportFormat, c, repoById[c.repo]?.name ?? c.repo))
-      .join("\n");
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+  const copyList = async () => {
+    setCopying(true);
+    try {
+      const headers = list.map((c) => formatCommit(exportFormat, c, repoById[c.repo]?.name ?? c.repo));
+      let text: string;
+      if (includeDiffs) {
+        const patches = await getCommitPatches(
+          list.map((c) => ({ repoPath: repoById[c.repo]?.path ?? "", hash: c.hash })),
+        );
+        text = headers.map((h, i) => `${h}\n${patches[i]}`).join("\n\n");
+      } else {
+        text = headers.join("\n");
+      }
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } finally {
+      setCopying(false);
+    }
   };
   return (
     <div className="toolbar">
@@ -164,8 +179,17 @@ export function ToolBar({
         sampleCommits={list}
         repoById={repoById}
       />
-      <button type="button" className="btn" title="Copy filtered commit list" onClick={copyList}>
-        {copied ? "✓ Copied" : "⧉ Copy"}
+      <label className="toggle" title="Include each commit's full diff in the copied list">
+        <input type="checkbox" checked={includeDiffs} onChange={(e) => setIncludeDiffs(e.target.checked)} /> +diffs
+      </label>
+      <button
+        type="button"
+        className="btn"
+        title="Copy filtered commit list"
+        disabled={copying}
+        onClick={copyList}
+      >
+        {copying ? "⧉ Copying…" : copied ? "✓ Copied" : "⧉ Copy"}
       </button>
     </div>
   );

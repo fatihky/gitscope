@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { getCommitDiff } from "@/lib/gitscope/commit-diff";
+import { useEffect, useState } from "react";
 import type { CommitDiff } from "@/lib/gitscope/commit-diff";
+import { getCommitDiff, getCommitPatch } from "@/lib/gitscope/commit-diff";
 import { full } from "@/lib/gitscope/format";
 import type { Commit, RepoConfig } from "@/lib/gitscope/types";
 
@@ -55,6 +55,23 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
     setTimeout(() => setCopied(null), 1200);
   };
 
+  const [copyingDiff, setCopyingDiff] = useState(false);
+  const [diffCopyError, setDiffCopyError] = useState<string | null>(null);
+  const copyWithDiff = async () => {
+    setCopyingDiff(true);
+    setDiffCopyError(null);
+    try {
+      const patch = await getCommitPatch(repo.path, c.hash);
+      await navigator.clipboard.writeText(patch);
+      setCopied("with-diff");
+      setTimeout(() => setCopied(null), 1200);
+    } catch (err) {
+      setDiffCopyError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCopyingDiff(false);
+    }
+  };
+
   const [diff, setDiff] = useState<CommitDiff | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
   useEffect(() => {
@@ -78,6 +95,15 @@ function CommitDetailBody({ commit: c, repo }: { commit: Commit; repo: RepoConfi
       <div className="acts">
         <button type="button" className="btn" title="Copy full SHA" onClick={() => copyToClipboard(c.hash, "sha")}>
           {copied === "sha" ? "✓ Copied" : "⧉ SHA"}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          title={diffCopyError ?? "Copy commit message + full diff"}
+          disabled={copyingDiff}
+          onClick={copyWithDiff}
+        >
+          {copied === "with-diff" ? "✓ Copied" : copyingDiff ? "⧉ Copying…" : "⧉ Copy with diff"}
         </button>
         <button
           type="button"

@@ -46,6 +46,37 @@ export async function getCommitDiff(
   };
 }
 
+/** Full `git show` output (commit header + unified diff) for one commit, for "copy with diff". */
+export async function getCommitPatch(repoPath: string, hash: string): Promise<string> {
+  const gitArgs = resolveGitArgs(repoPath);
+  return runGit(gitArgs, ["show", hash]);
+}
+
+export type PatchRequest = { repoPath: string; hash: string };
+
+/**
+ * Batched getCommitPatch for "copy filtered list with diffs", capped at MAX_CONCURRENT_PATCHES
+ * in-flight `git show` child processes at once — a filtered list can run into the hundreds of
+ * commits, and spawning that many processes simultaneously risks hitting the OS's open-file/process
+ * limits.
+ */
+const MAX_CONCURRENT_PATCHES = 8;
+
+export async function getCommitPatches(items: PatchRequest[]): Promise<string[]> {
+  const results: string[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await getCommitPatch(items[i].repoPath, items[i].hash);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_CONCURRENT_PATCHES, items.length) }, worker),
+  );
+  return results;
+}
+
 const ZERO_OID_RE = /^0+$/;
 
 /**
