@@ -43,6 +43,10 @@ GITSCOPE_REPOS=/path/to/repo-a,/path/to/repo-b
 
 # Optional: date-range preset chips, in days, comma-separated. Defaults to 7,30,90,365.
 GITSCOPE_RANGE_PRESETS=7,30,90,365
+
+# Optional: log verbosity (debug | info | warn | error). Defaults to info.
+# `debug` traces each git command with its duration — useful for investigating slow loads.
+GITSCOPE_LOG_LEVEL=info
 ```
 
 Then run the dev server:

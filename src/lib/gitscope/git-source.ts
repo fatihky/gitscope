@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { diffLines } from "diff";
 import { colorForAuthor, colorForRepo, initialsFor } from "./palette";
 import type { Author, Commit, RepoConfig, RepoLoadError } from "./types";
+import { logger } from "./logger";
 
 const execFileAsync = promisify(execFile);
 
@@ -71,18 +72,18 @@ export async function loadRepoConfigs(): Promise<RepoConfigsData> {
 
   const repoPaths = getConfiguredRepoPaths();
   const start = Date.now();
-  console.log(`[gitscope] loading ${repoPaths.length} repo(s)...`);
+  logger.info(`loading ${repoPaths.length} repo(s)...`);
 
   for (const rawPath of repoPaths) {
     const repoPath = path.resolve(process.cwd(), rawPath);
     try {
       const repo = await loadRepoConfig(repoPath, usedIds);
       repoConfigs.push(repo);
-      console.log(
-        `[gitscope] loaded repo config ${repo.id}: ${repo.branches.length} branch(es)`,
+      logger.info(
+        `loaded repo config ${repo.id}: ${repo.branches.length} branch(es)`,
       );
     } catch (err) {
-      console.log(`[gitscope] failed to load repo ${repoPath}`, err);
+      logger.error(`failed to load repo ${repoPath}`, err);
       errors.push({
         path: repoPath,
         message: err instanceof Error ? err.message : String(err),
@@ -90,7 +91,7 @@ export async function loadRepoConfigs(): Promise<RepoConfigsData> {
     }
   }
 
-  console.log(`[gitscope] repo configs done in ${Date.now() - start}ms`);
+  logger.info(`repo configs done in ${Date.now() - start}ms`);
 
   return { repoConfigs, errors };
 }
@@ -131,8 +132,8 @@ export async function loadCommitsForRepos(
       }
       walkedBranches.push(branch);
     }
-    console.log(
-      `[gitscope] loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`,
+    logger.info(
+      `loaded ${count} commit(s) for ${id} in ${Date.now() - repoStart}ms`,
     );
   }
 
@@ -141,8 +142,8 @@ export async function loadCommitsForRepos(
     c.i = i;
   });
 
-  console.log(
-    `[gitscope] commit load done in ${Date.now() - start}ms (${commits.length} commits total)`,
+  logger.info(
+    `commit load done in ${Date.now() - start}ms (${commits.length} commits total)`,
   );
 
   return {
@@ -166,19 +167,39 @@ export async function runGit(
   gitArgs: GitArgs,
   args: string[],
 ): Promise<string> {
+  const start = Date.now();
   const { stdout } = await execFileAsync("git", ["-C", gitArgs.dir, ...args], {
     maxBuffer: MAX_BUFFER,
   });
+  logger.debug(
+    `${describeGitCommand(gitArgs.dir, args)} → ${Date.now() - start}ms, ${stdout.length} chars`,
+  );
   return stdout;
 }
 
 /** Same as runGit, but returns raw stdout bytes (for blob contents, which may not be UTF-8/text at all). */
 async function runGitBuffer(gitArgs: GitArgs, args: string[]): Promise<Buffer> {
+  const start = Date.now();
   const { stdout } = await execFileAsync("git", ["-C", gitArgs.dir, ...args], {
     maxBuffer: MAX_BUFFER,
     encoding: "buffer",
   });
-  return stdout as unknown as Buffer;
+  const buf = stdout as unknown as Buffer;
+  logger.debug(
+    `${describeGitCommand(gitArgs.dir, args)} → ${Date.now() - start}ms, ${buf.length} bytes`,
+  );
+  return buf;
+}
+
+/**
+ * Renders a `git` invocation as one readable line for debug logs. Git's field/record separators
+ * (see LOG_FORMAT) are raw control chars that would garble the terminal, so they're escaped here.
+ */
+function describeGitCommand(dir: string, args: string[]): string {
+  const rendered = args.map((arg) =>
+    arg.replace(/\x1f/g, "\\x1f").replace(/\x1e/g, "\\x1e"),
+  );
+  return `git -C ${dir} ${rendered.join(" ")}`;
 }
 
 // Field/record separators for git's --pretty=format: control chars that can't appear in the fields
@@ -249,8 +270,8 @@ async function loadRepoConfig(
     defaultBranch,
     ...branchNames.filter((b) => b !== defaultBranch).sort(),
   ];
-  console.log(
-    `[gitscope]   ${branches.length} branch(es): ${branches.join(", ")}`,
+  logger.info(
+    `  ${branches.length} branch(es): ${branches.join(", ")}`,
   );
 
   const id = uniqueId(path.basename(repoPath.replace(/[/\\]+$/, "")), usedIds);
