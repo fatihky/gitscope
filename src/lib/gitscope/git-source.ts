@@ -117,6 +117,11 @@ export async function loadCommitsForRepos(
     const repoStart = Date.now();
     const gitArgs = resolveGitArgs(repoPath);
     const tagByOid = await loadTags(gitArgs);
+    // A branch whose tip predates `since` can't have anything `--since` would keep (git filters on
+    // committer date, hence `committerdate` here too) — skip its `git log` call entirely instead of
+    // spawning a process just to learn that, which is the common case for stale/inactive branches.
+    const tipDateByBranch = since ? await loadBranchTipDates(gitArgs) : null;
+    const sinceSeconds = since ? since.getTime() / 1000 : null;
 
     // Walk branches in order, assigning each commit to the first (i.e. default-most) branch that
     // reaches it. `--not <already-walked branches>` pushes that exclusion into git itself, so each
@@ -125,7 +130,9 @@ export async function loadCommitsForRepos(
     let count = 0;
     const walkedBranches: string[] = [];
     for (const branch of branches) {
-      const log = await gitLog(gitArgs, branch, since, walkedBranches);
+      const tipDate = tipDateByBranch?.get(branch);
+      const isStale = sinceSeconds !== null && tipDate !== undefined && tipDate < sinceSeconds;
+      const log = isStale ? [] : await gitLog(gitArgs, branch, since, walkedBranches);
       for (const entry of log) {
         commits.push(buildCommit(id, branch, entry, tagByOid, authorsByKey));
         count++;
@@ -286,6 +293,22 @@ async function loadRepoConfig(
   };
 }
 
+/** Every `refs/heads` branch's tip committer-date (unix seconds), fetched in one call. */
+async function loadBranchTipDates(gitArgs: GitArgs): Promise<Map<string, number>> {
+  const stdout = await runGit(gitArgs, [
+    "for-each-ref",
+    "--format=%(refname:short)%09%(committerdate:unix)",
+    "refs/heads",
+  ]).catch(() => "");
+  const tipDateByBranch = new Map<string, number>();
+  for (const line of stdout.split("\n")) {
+    if (!line.trim()) continue;
+    const [branch, unixSeconds] = line.split("\t");
+    tipDateByBranch.set(branch, Number(unixSeconds));
+  }
+  return tipDateByBranch;
+}
+
 async function listBranches(gitArgs: GitArgs): Promise<string[]> {
   const stdout = await runGit(gitArgs, [
     "for-each-ref",
@@ -337,32 +360,27 @@ function normalizeRemoteUrl(url: string): string | null {
   return null;
 }
 
-async function listTagNames(gitArgs: GitArgs): Promise<string[]> {
-  const stdout = await runGit(gitArgs, [
-    "for-each-ref",
-    "--format=%(refname:short)",
-    "refs/tags",
-  ]);
-  return stdout
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
+/**
+ * Resolves every tag to the commit it points at in a single `git` call, instead of one `rev-parse`
+ * per tag. `%(*objecttype)`/`%(*objectname)` give the (fully peeled, even through nested annotated
+ * tags) target of an annotated tag; for a lightweight tag they're empty, so `%(objecttype)`/
+ * `%(objectname)` — the tag ref's own object — are the fallback. Either way, a final type other
+ * than "commit" (e.g. a tag on a blob/tree) means the tag doesn't resolve to a commit — skip it.
+ */
 async function loadTags(gitArgs: GitArgs): Promise<Map<string, string>> {
   const tagByOid = new Map<string, string>();
-  const tagNames = await listTagNames(gitArgs).catch(() => []);
-  for (const tag of tagNames) {
-    try {
-      // `^{commit}` peels annotated tags (recursively) down to the commit they point at; it fails
-      // for tags that ultimately point at something else (e.g. a blob/tree), which we skip below.
-      const oid = (
-        await runGit(gitArgs, ["rev-parse", `refs/tags/${tag}^{commit}`])
-      ).trim();
-      if (!tagByOid.has(oid)) tagByOid.set(oid, tag);
-    } catch {
-      // tag doesn't resolve to a commit (e.g. tags a blob/tree) — skip it
-    }
+  const stdout = await runGit(gitArgs, [
+    "for-each-ref",
+    "--format=%(refname:short)%09%(objecttype)%09%(objectname)%09%(*objecttype)%09%(*objectname)",
+    "refs/tags",
+  ]).catch(() => "");
+  for (const line of stdout.split("\n")) {
+    if (!line.trim()) continue;
+    const [tag, objectType, objectName, peeledType, peeledName] = line.split("\t");
+    const type = peeledType || objectType;
+    const oid = peeledName || objectName;
+    if (type !== "commit") continue;
+    if (!tagByOid.has(oid)) tagByOid.set(oid, tag);
   }
   return tagByOid;
 }
