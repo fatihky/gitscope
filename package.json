@@ -12,9 +12,9 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "prepublishOnly": "next build",
-    "start": "next start",
+    "build": "next build && node scripts/copy-standalone-assets.mjs",
+    "prepublishOnly": "next build && node scripts/copy-standalone-assets.mjs",
+    "start": "node .next/standalone/server.js",
     "lint": "biome check",
     "format": "biome format --write"
   },
