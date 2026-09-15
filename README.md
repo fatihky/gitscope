@@ -60,7 +60,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the result.
 
 ## Tech stack
 
-Next.js (App Router) + React, with [isomorphic-git](https://isomorphic-git.org/) for reading
+Waku + React, with [isomorphic-git](https://isomorphic-git.org/) for reading
 repository data straight off disk, [nuqs](https://nuqs.dev/) for URL-synced filter state, and
 Tailwind CSS for styling.
 
