@@ -1,37 +1,40 @@
 {
   "name": "gitscope",
   "version": "0.1.0",
+  "type": "module",
   "bin": {
     "gitscope": "./bin/gitscope.mjs"
   },
   "files": [
     "bin/",
-    ".next/standalone/",
-    ".next/static/",
-    "public/"
+    "dist/"
   ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build && node scripts/copy-standalone-assets.mjs",
-    "prepublishOnly": "next build && node scripts/copy-standalone-assets.mjs",
-    "start": "node .next/standalone/server.js",
+    "dev": "waku dev",
+    "build": "waku build",
+    "prepublishOnly": "waku build",
+    "start": "waku start",
     "lint": "biome check",
     "format": "biome format --write"
   },
   "dependencies": {
     "diff": "^7.0.0",
-    "next": "16.3.4",
+    "hono": "^4.12.14",
     "nuqs": "^2.10.1",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-server-dom-webpack": "19.2.8",
+    "waku": "1.0.0-rc.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
-    "@tailwindcss/postcss": "^4",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@tailwindcss/vite": "^4",
     "@types/diff": "^7.0.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "1.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"

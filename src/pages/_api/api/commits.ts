@@ -1,11 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server";
 import { DAY, full, iso, previousWorkday } from "@/lib/gitscope/format";
 import { filterCommits } from "@/lib/gitscope/filter-commits";
 import { loadCommitsForRepos, loadRepoConfigs } from "@/lib/gitscope/git-source";
 import type { DateRange, SortMode } from "@/lib/gitscope/types";
-
-// Reflects live local filesystem state, not static content — read it per request.
-export const dynamic = "force-dynamic";
 
 /**
  * Resolves the "preset"/"from"/"to" query params to a concrete date range, mirroring presetRange()
@@ -32,8 +28,8 @@ function resolveDateRange(preset: string | null, from: string | null, to: string
  * (both comma-separated) select which repos/branches to include — repo ids are validated against
  * the server's configured repos (via loadRepoConfigs), never taken as raw filesystem paths.
  */
-export async function GET(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
   const { repoConfigs } = await loadRepoConfigs();
 
   const requestedRepoIds = params.get("repos")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
@@ -81,5 +77,5 @@ export async function GET(request: NextRequest) {
     tag: c.tag,
   }));
 
-  return NextResponse.json({ count: body.length, commits: body });
+  return Response.json({ count: body.length, commits: body });
 }

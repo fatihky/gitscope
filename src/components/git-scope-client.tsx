@@ -1,10 +1,19 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { Suspense, lazy, useEffect, useState } from "react";
 import type { GitScopeProps } from "./git-scope";
 
-const GitScope = dynamic(() => import("./git-scope"), { ssr: false });
+// GitScope reads localStorage during its initial render (theme, panel open-state, export format),
+// so it must never run server-side — mount it only after hydration, like next/dynamic(..., { ssr: false }).
+const GitScope = lazy(() => import("./git-scope"));
 
 export function GitScopeClient(props: GitScopeProps) {
-  return <GitScope {...props} />;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return (
+    <Suspense fallback={null}>
+      <GitScope {...props} />
+    </Suspense>
+  );
 }

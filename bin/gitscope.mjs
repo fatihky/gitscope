@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const standaloneServer = resolve(__dirname, "..", ".next", "standalone", "server.js");
+const require = createRequire(import.meta.url);
+const dist = join(__dirname, "..", "dist");
 
 const args = process.argv.slice(2);
 if (args.includes("--help") || args.includes("-h")) {
@@ -30,11 +32,19 @@ Examples:
   process.exit(0);
 }
 
-if (!existsSync(standaloneServer)) {
+if (!existsSync(dist)) {
   console.error(
-    "gitscope: standalone build not found.\n" +
-      "Run `next build` first or reinstall the package.",
+    "gitscope: production build not found.\n" +
+      "Run `waku build` first or reinstall the package.",
   );
+  process.exit(1);
+}
+
+let wakuCli;
+try {
+  wakuCli = join(dirname(require.resolve("waku/package.json")), "cli.js");
+} catch {
+  console.error("gitscope: could not find the `waku` package — reinstall the package.");
   process.exit(1);
 }
 
@@ -50,13 +60,11 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-process.env.PORT = port;
-process.env.HOSTNAME = hostname;
-
-const child = spawn("node", [standaloneServer], {
-  stdio: "inherit",
-  env: process.env,
-});
+const child = spawn(
+  process.execPath,
+  [wakuCli, "start", "--port", port, "--host", hostname],
+  { cwd: join(__dirname, ".."), stdio: "inherit", env: process.env },
+);
 
 child.on("error", (err) => {
   console.error(`gitscope: failed to start server: ${err.message}`);

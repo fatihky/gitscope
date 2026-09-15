@@ -13,9 +13,9 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# waku
+/dist/
+src/pages.gen.ts
 
 # production
 /build
@@ -37,4 +37,3 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
