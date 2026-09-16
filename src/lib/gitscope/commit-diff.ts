@@ -81,8 +81,8 @@ const ZERO_OID_RE = /^0+$/;
 
 /**
  * Changed files for one commit, diffed against its first parent only — a merge commit's diff
- * against its other parents is ignored, matching the previous isomorphic-git-based behavior. Root
- * commits (no parent) are diffed against git's empty-tree object instead.
+ * against its other parents is ignored. Root commits (no parent) are diffed against git's
+ * empty-tree object instead.
  */
 async function diffTreeRaw(
   gitArgs: GitArgs,

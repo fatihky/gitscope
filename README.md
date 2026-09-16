@@ -2,8 +2,8 @@
 
 A local, read-only dashboard for browsing git history, contributions, and activity across one or
 more repositories on your filesystem. Point it at your repos via an env var, and it walks their
-commit history directly with [isomorphic-git](https://isomorphic-git.org/) — no GitHub/GitLab API,
-no cloning, no server-side database.
+commit history directly with your local `git` binary — no GitHub/GitLab API, no cloning, no
+server-side database.
 
 ## Features
 
@@ -23,17 +23,45 @@ no cloning, no server-side database.
 - **Activity view** — a GitHub-style commit heatmap (last ~53 weeks), a weekday × hour punchcard,
   and commit volume over time.
 - **Copy filtered results** — copy the currently filtered commit list, or a single commit's SHA, to
-  the clipboard, optionally including each commit's full diff (`git show` output).
-- **Shareable links** — filter state (date preset/range, author, sort) is kept in the URL query
-  string, so a filtered view can be bookmarked or shared.
+  the clipboard, optionally including each commit's full diff (`git show` output). The per-commit
+  line format is a customizable template with `{repo}`, `{date}`, `{author}`, `{subject}`, `{hash}`
+  and `{shortHash}` tokens.
+- **Persistent filters** — filter state (date preset/range, author, merges, sort, search) is saved
+  to `localStorage` and survives reloads; a "Clear filters" link resets everything to defaults.
 - **JSON API** — `GET /api/commits` returns the same filtered commit data as JSON, for scripting or
-  external tooling (see query params documented in `src/app/api/commits/route.ts`).
+  external tooling. Query params: `preset`/`from`/`to`, `author`, `merges`, `q`, `sort`, `repos`,
+  `branches` (see `src/pages/_api/api/commits.ts`).
 - **Keyboard shortcuts** — `/` focuses search, `j`/`k` move the commit selection up/down, `Esc`
-  blurs search.
+  blurs search, `?` shows the shortcut list.
 - **Light/dark theme**, persisted in `localStorage`.
 - **Read-only** — gitscope only reads repository data; it never writes to the repos it points at.
 
-## Getting started
+## Install
+
+gitscope is published to npm as `@fatihky/gitscope`:
+
+```bash
+npm install -g @fatihky/gitscope
+GITSCOPE_REPOS=/path/to/repo-a,/path/to/repo-b gitscope
+```
+
+or run it without installing:
+
+```bash
+GITSCOPE_REPOS=/path/to/repo-a npx @fatihky/gitscope
+```
+
+CLI options:
+
+```
+-p, --port <port>      Port to listen on (default: 3000, env: PORT)
+    --hostname <host>  Hostname to bind to (default: 0.0.0.0, env: HOSTNAME)
+-h, --help             Show help
+```
+
+## Configuration
+
+Requires `git` on your `PATH`.
 
 Configure which local repositories to load via env vars (see `.env-example`):
 
@@ -49,22 +77,25 @@ GITSCOPE_RANGE_PRESETS=7,30,90,365
 GITSCOPE_LOG_LEVEL=info
 ```
 
-Then run the dev server:
+## Development
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev        # Waku dev server on http://localhost:3000
+pnpm build      # production build into dist/
+pnpm start      # serve the production build
+pnpm lint       # Biome
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the result.
+For local development, put the env vars above in a `.env` file (copy `.env-example`).
 
 ## Tech stack
 
-Waku + React, with [isomorphic-git](https://isomorphic-git.org/) for reading
-repository data straight off disk, filter state memorized in `localStorage`, and
-Tailwind CSS for styling.
+[Waku](https://waku.gg) + React 19 (with the React Compiler), with the native `git` CLI for
+reading repository data straight off disk, filter state memorized in `localStorage`, and Tailwind
+CSS for styling.
 
 Commit filtering (date `to`, author, merges, free-text search) runs entirely client-side over the
-already-fetched commit list — isomorphic-git's `log()` only supports a `since` lower bound, so
-that's the only filter pushed server-side, and only when the UI asks for a range wider than what's
-already loaded. See `agents-memory.md` for details.
+already-fetched commit list. Only the `since` lower bound is pushed server-side (`git log --since`),
+and only when the UI asks for a range wider than what's already loaded. See `agents-memory.md` for
+details.
