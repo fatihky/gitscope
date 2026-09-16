@@ -29,6 +29,8 @@ type ToolBarProps = {
   onMergesChange: (value: boolean) => void;
   sort: SortMode;
   onSortChange: (value: SortMode) => void;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
   list: Commit[];
   repoById: Record<string, RepoConfig>;
   exportFormat: string;
@@ -53,6 +55,8 @@ export function ToolBar({
   onMergesChange,
   sort,
   onSortChange,
+  hasActiveFilters,
+  onClearFilters,
   list,
   repoById,
   exportFormat,
@@ -162,6 +166,9 @@ export function ToolBar({
         <option value="new">Newest first</option>
         <option value="old">Oldest first</option>
       </select>
+      <button type="button" className="linkbtn" disabled={!hasActiveFilters} onClick={onClearFilters}>
+        Clear filters
+      </button>
       <div className="vr" />
       <button
         type="button"

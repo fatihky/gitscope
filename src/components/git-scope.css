@@ -94,6 +94,10 @@ kbd{
 .fmt-btn{font-size:10px;gap:2px}
 .sel{height:18px;padding:0 3px;background:var(--bg-2);border:1px solid var(--bd);border-radius:3px;outline:none;cursor:pointer;font-size:11px}
 .vr{width:1px;height:14px;background:var(--bd);flex:0 0 1px}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:var(--acc);font-size:10.5px;
+  white-space:nowrap;text-decoration:underline;text-underline-offset:2px}
+.linkbtn:hover{color:var(--tx)}
+.linkbtn[disabled]{color:var(--tx-3);cursor:not-allowed;text-decoration:none}
 .toggle{display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--tx-2);white-space:nowrap;user-select:none;font-size:11px}
 .gitscope input[type=checkbox]{
   appearance:none;width:11px;height:11px;border:1px solid var(--bd-2);border-radius:2px;

@@ -165,6 +165,8 @@ export function GitScope({ repoConfigs, errors, rangePresets }: GitScopeProps) {
           onMergesChange={gs.setMerges}
           sort={gs.sort}
           onSortChange={gs.setSort}
+          hasActiveFilters={gs.hasActiveFilters}
+          onClearFilters={gs.clearFilters}
           list={gs.list}
           repoById={repoById}
           exportFormat={gs.exportFormat}

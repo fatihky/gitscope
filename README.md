@@ -61,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the result.
 ## Tech stack
 
 Waku + React, with [isomorphic-git](https://isomorphic-git.org/) for reading
-repository data straight off disk, [nuqs](https://nuqs.dev/) for URL-synced filter state, and
+repository data straight off disk, filter state memorized in `localStorage`, and
 Tailwind CSS for styling.
 
 Commit filtering (date `to`, author, merges, free-text search) runs entirely client-side over the

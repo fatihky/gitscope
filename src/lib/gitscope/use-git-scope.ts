@@ -1,11 +1,36 @@
-import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DAY, DEFAULT_EXPORT_FORMAT, iso, previousWorkday } from "./format";
-import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, TabKey, Theme } from "./types";
+import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
 
 const THEME_STORAGE_KEY = "gitscope:theme";
 const REPO_OPEN_STORAGE_KEY = "gitscope:repoOpen";
 const EXPORT_FORMAT_STORAGE_KEY = "gitscope:exportFormat";
+const FILTERS_STORAGE_KEY = "gitscope:filters";
+
+type StoredFilters = {
+  preset: string;
+  from: string | null;
+  to: string | null;
+  q: string;
+  author: string;
+  merges: boolean;
+  sort: SortMode;
+};
+
+function defaultFilters(defaultRangePreset: string): StoredFilters {
+  return { preset: defaultRangePreset, from: null, to: null, q: "", author: "", merges: true, sort: "new" };
+}
+
+function initialFilters(defaultRangePreset: string): StoredFilters {
+  const defaults = defaultFilters(defaultRangePreset);
+  try {
+    const stored = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (stored) return { ...defaults, ...JSON.parse(stored) };
+  } catch {
+    // ignore (private browsing, disabled storage, etc.)
+  }
+  return defaults;
+}
 
 function initialTheme(): Theme {
   try {
@@ -77,13 +102,8 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
     initialRepoRuntime(repoConfigs, initialOpenState()),
   );
   const [scope, setScope] = useState<ScopeMode>("global");
-  const [preset, setPreset] = useQueryState("preset", parseAsString.withDefault(defaultRangePreset));
-  const [customFrom, setCustomFrom] = useQueryState("from", parseAsString);
-  const [customTo, setCustomTo] = useQueryState("to", parseAsString);
-  const [q, setQInternal] = useState("");
-  const [author, setAuthor] = useQueryState("author", parseAsString.withDefault(""));
-  const [merges, setMerges] = useQueryState("merges", parseAsBoolean.withDefault(true));
-  const [sort, setSort] = useQueryState("sort", parseAsStringLiteral(["new", "old"] as const).withDefault("new"));
+  const [filters, setFilters] = useState<StoredFilters>(() => initialFilters(defaultRangePreset));
+  const { preset, from: customFrom, to: customTo, q, author, merges, sort } = filters;
   const [sel, setSel] = useState<number | null>(null);
   const [limit, setLimit] = useState(250);
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -117,32 +137,55 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
     }
   }, [repos]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters));
+    } catch {
+      // ignore (private browsing, disabled storage, etc.)
+    }
+  }, [filters]);
+
   const globalRange = useMemo<DateRange>(
     () => presetRange(preset, { from: customFrom, to: customTo }, now),
     [preset, customFrom, customTo, now],
   );
 
   const setQ = useCallback((value: string) => {
-    setQInternal(value);
+    setFilters((prev) => ({ ...prev, q: value }));
     setLimit(250);
   }, []);
 
+  const setCustomFrom = useCallback(
+    (value: string | null) => setFilters((prev) => ({ ...prev, from: value })),
+    [],
+  );
+
+  const setCustomTo = useCallback((value: string | null) => setFilters((prev) => ({ ...prev, to: value })), []);
+
+  const setAuthor = useCallback((value: string) => setFilters((prev) => ({ ...prev, author: value })), []);
+
+  const setMerges = useCallback((value: boolean) => setFilters((prev) => ({ ...prev, merges: value })), []);
+
+  const setSort = useCallback((value: SortMode) => setFilters((prev) => ({ ...prev, sort: value })), []);
+
   const setPresetChoice = useCallback(
     (p: string) => {
-      setPreset(p);
-      if (p === "custom") {
-        if (!customFrom) {
+      setFilters((prev) => {
+        if (p === "custom") {
+          if (prev.from) return { ...prev, preset: p };
           const seedDays = Number(defaultRangePreset) || 30;
-          setCustomFrom(iso(now - seedDays * DAY));
-          setCustomTo(iso(now));
+          return { ...prev, preset: p, from: iso(now - seedDays * DAY), to: iso(now) };
         }
-      } else {
-        setCustomFrom(null);
-        setCustomTo(null);
-      }
+        return { ...prev, preset: p, from: null, to: null };
+      });
     },
-    [customFrom, now, defaultRangePreset, setCustomFrom, setCustomTo, setPreset],
+    [now, defaultRangePreset],
   );
+
+  const clearFilters = useCallback(() => {
+    setFilters(defaultFilters(defaultRangePreset));
+    setLimit(250);
+  }, [defaultRangePreset]);
 
   const repoRange = useCallback(
     (repoId: string): DateRange => {
@@ -261,6 +304,11 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
     [repos],
   );
 
+  const hasActiveFilters = useMemo(() => {
+    const defaults = defaultFilters(defaultRangePreset);
+    return (Object.keys(defaults) as (keyof StoredFilters)[]).some((key) => filters[key] !== defaults[key]);
+  }, [filters, defaultRangePreset]);
+
   return {
     scope,
     setScope,
@@ -278,6 +326,8 @@ export function useGitScope({ repoConfigs, commits, defaultRangePreset = "30" }:
     setMerges,
     sort,
     setSort,
+    clearFilters,
+    hasActiveFilters,
     theme,
     setTheme,
     exportFormat,
