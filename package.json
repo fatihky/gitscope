@@ -1,5 +1,5 @@
 {
-  "name": "gitscope",
+  "name": "@fatihky/gitscope",
   "version": "0.1.0",
   "type": "module",
   "bin": {
