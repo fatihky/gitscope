@@ -24,3 +24,17 @@ alone. Not user-facing docs; keep entries short and dated.
 - The "load more" control (`limit` state in `use-git-scope.ts`, `commits-table.tsx`'s
   `IntersectionObserver`) grows the *rendered* slice of the already-fetched-and-filtered list by
   250 at a time. It's a render-window optimization, not incremental `git.log()` calls.
+
+## Range presets: day-count chips vs. named presets (2026-10-12)
+
+The `Range` chips are day counts from `GITSCOPE_RANGE_PRESETS` plus three hard-coded named presets:
+`all`, `prevworkday` ("Prev WD"), and `prevweek` ("Prev WK"). A new named preset must be added in
+*two* places that deliberately duplicate each other's logic:
+
+- `presetRange()` in `use-git-scope.ts` (client), and
+- `resolveDateRange()` in `src/pages/_api/api/commits.ts` (API mirror).
+
+Both delegate the actual date math to helpers in `format.ts` (`previousWorkday`, `previousWeek`) so
+the two call sites stay thin; put new date math there, not inline in either resolver. Date helpers
+use *local-calendar* ISO strings (not `iso()`, which is UTC) so a "day"/"week" matches the user's
+wall clock. `previousWeek` returns the last full Mon–Sun week, treating Sunday as the end of a week.

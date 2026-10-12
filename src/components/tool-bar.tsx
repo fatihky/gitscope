@@ -119,6 +119,14 @@ export function ToolBar({
         >
           Prev WD
         </button>
+        <button
+          type="button"
+          className="chip"
+          aria-pressed={preset === "prevweek"}
+          onClick={() => onPresetChange("prevweek")}
+        >
+          Prev WK
+        </button>
         <button type="button" className="chip" aria-pressed={preset === "all"} onClick={() => onPresetChange("all")}>
           All
         </button>

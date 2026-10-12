@@ -19,12 +19,29 @@ export const full = (t: number): string =>
     hour12: false,
   });
 
+/** ISO date (local calendar) of a Date, matching previousWorkday()'s convention. */
+const localIso = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 /** ISO date (local calendar) of the last weekday before today: Mon -> Fri, Sun -> Fri, else yesterday. */
 export const previousWorkday = (now: number): string => {
   const d = new Date(now);
   const back = d.getDay() === 0 ? 2 : d.getDay() === 1 ? 3 : 1;
   d.setDate(d.getDate() - back);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return localIso(d);
+};
+
+/** ISO date range (local calendar) of the previous full week, Monday through Sunday. */
+export const previousWeek = (now: number): { from: string; to: string } => {
+  const d = new Date(now);
+  // getDay(): Sun=0..Sat=6. Days back to this week's Monday (where Sunday counts as the *end* of a
+  // Mon–Sun week, so on Sunday "this Monday" is 6 days back, not tomorrow).
+  const sinceMonday = (d.getDay() + 6) % 7;
+  const from = new Date(d);
+  from.setDate(d.getDate() - sinceMonday - 7);
+  const to = new Date(from);
+  to.setDate(from.getDate() + 6);
+  return { from: localIso(from), to: localIso(to) };
 };
 
 export const DEFAULT_EXPORT_FORMAT = "[{repo}][{date}][{author}]: {subject}";

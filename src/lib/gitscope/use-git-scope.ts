@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DAY, DEFAULT_EXPORT_FORMAT, iso, previousWorkday } from "./format";
+import { DAY, DEFAULT_EXPORT_FORMAT, iso, previousWeek, previousWorkday } from "./format";
 import type { Commit, DateRange, RepoConfig, RepoRuntime, ScopeMode, SortMode, TabKey, Theme } from "./types";
 
 const THEME_STORAGE_KEY = "gitscope:theme";
@@ -82,6 +82,7 @@ function presetRange(preset: string, custom: DateRange, now: number): DateRange 
     const day = previousWorkday(now);
     return { from: day, to: day };
   }
+  if (preset === "prevweek") return previousWeek(now);
   const to = now;
   const from = now - Number(preset) * DAY;
   return { from: iso(from), to: iso(to) };

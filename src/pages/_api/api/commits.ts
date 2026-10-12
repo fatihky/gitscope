@@ -1,4 +1,4 @@
-import { DAY, full, iso, previousWorkday } from "@/lib/gitscope/format";
+import { DAY, full, iso, previousWeek, previousWorkday } from "@/lib/gitscope/format";
 import { filterCommits } from "@/lib/gitscope/filter-commits";
 import { loadCommitsForRepos, loadRepoConfigs } from "@/lib/gitscope/git-source";
 import type { DateRange, SortMode } from "@/lib/gitscope/types";
@@ -16,6 +16,7 @@ function resolveDateRange(preset: string | null, from: string | null, to: string
     const day = previousWorkday(now);
     return { from: day, to: day };
   }
+  if (preset === "prevweek") return previousWeek(now);
   const days = Number(preset);
   if (Number.isFinite(days) && days > 0) return { from: iso(now - days * DAY), to: iso(now) };
   return { from, to };
