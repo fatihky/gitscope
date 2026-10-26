@@ -110,6 +110,13 @@ function RepoNode({
   const total = repo.branches.reduce((s, b) => s + (branchCommitCounts[`${repo.id}/${b}`] || 0), 0);
   const some = runtime.bon.size > 0 && runtime.bon.size < repo.branches.length;
   const custom = !!runtime.range;
+  const defaultBranch = repo.branches[0];
+  const countOf = (b: string) => branchCommitCounts[`${repo.id}/${b}`] || 0;
+  // Most-committed branches first; ties fall back to name so the order is stable.
+  const sortedBranches = [...repo.branches].sort((a, b) => {
+    const diff = countOf(b) - countOf(a);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
 
   return (
     <div className={`repo ${runtime.open ? "open" : ""}`}>
@@ -142,7 +149,7 @@ function RepoNode({
         <span className="cnt">{fmt(total)}</span>
       </div>
       <div className="branches">
-        {repo.branches.map((b) => (
+        {sortedBranches.map((b) => (
           <div key={b} className="brow" onClick={() => onToggleBranch(b)}>
             <input
               type="checkbox"
@@ -151,8 +158,8 @@ function RepoNode({
               onChange={() => onToggleBranch(b)}
             />
             <span className="bname">{b}</span>
-            {b === repo.branches[0] && <span className="tag">def</span>}
-            <span className="cnt">{fmt(branchCommitCounts[`${repo.id}/${b}`] || 0)}</span>
+            {b === defaultBranch && <span className="tag">def</span>}
+            <span className="cnt">{fmt(countOf(b))}</span>
           </div>
         ))}
       </div>
