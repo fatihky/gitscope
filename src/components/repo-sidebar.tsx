@@ -113,8 +113,19 @@ function RepoNode({
 
   return (
     <div className={`repo ${runtime.open ? "open" : ""}`}>
-      <div className="rrow" onClick={onToggleOpen}>
-        <span className={`tw ${runtime.open ? "open" : ""}`}>▶</span>
+      <div className="rrow" onClick={onToggleOn}>
+        <button
+          type="button"
+          className={`tw ${runtime.open ? "open" : ""}`}
+          aria-expanded={runtime.open}
+          aria-label={runtime.open ? "Collapse repository" : "Expand repository"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleOpen();
+          }}
+        >
+          ▶
+        </button>
         <input
           type="checkbox"
           checked={runtime.on}
