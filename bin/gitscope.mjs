@@ -19,11 +19,11 @@ Usage: gitscope [options]
 Options:
   -h, --help     Show this help message
   -p, --port     Port to listen on (default: 3000, env: PORT)
-      --hostname Hostname to bind to (default: 0.0.0.0, env: HOSTNAME)
+      --hostname Hostname to bind to (default: 127.0.0.1, env: HOSTNAME)
 
 Environment Variables:
   PORT           Port to listen on (default: 3000)
-  HOSTNAME       Hostname to bind to (default: 0.0.0.0)
+  HOSTNAME       Hostname to bind to (default: 127.0.0.1)
 
 Examples:
   gitscope                    Start server on port 3000
@@ -49,7 +49,7 @@ try {
 }
 
 let port = process.env.PORT || "3000";
-let hostname = process.env.HOSTNAME || "0.0.0.0";
+let hostname = process.env.HOSTNAME || "127.0.0.1";
 
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];

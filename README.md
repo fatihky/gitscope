@@ -35,7 +35,7 @@ Requires `git` on your `PATH`. Run `gitscope --help` to see all options.
 | `GITSCOPE_REPOS`         | (required)       | Comma-separated local repo paths      |
 | `GITSCOPE_RANGE_PRESETS` | `7,30,90,365`    | Day counts for the date-range chips   |
 | `GITSCOPE_LOG_LEVEL`     | `info`           | Set to `debug` to time each git call  |
-| `PORT` / `HOSTNAME`      | `3000`/`0.0.0.0` | Where the server listens              |
+| `PORT` / `HOSTNAME`      | `3000`/`127.0.0.1` | Where the server listens            |
 
 ## Development
 
